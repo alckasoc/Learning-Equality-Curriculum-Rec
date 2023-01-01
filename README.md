@@ -3,14 +3,14 @@
 # Kaggle Learning-Equality-Curriculum-Recommendations
 
 ## Table of Contents:
-- [Requirements & Usage](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#requirements--usage)
-- [Datasets](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#datasets)
-- [Structure](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#structure)
-- [Difficulties](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#difficulties)
-- [Author Info](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#author-info)
-- [Thank you!](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#thank-you)
+- [Requirements & Usage](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#requirements--usage-)
+- [Datasets](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#datasets-)
+- [Structure](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#structure-)
+- [Difficulties](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#difficulties-)
+- [Author Info](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#author-info-)
+- [Thank you!](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#thank-you-)
 
-## Requirements & Usage
+## Requirements & Usage 🛑
 
 [Insert more details about requirements (e.g. compute hardware, python  version, etc)]
 
@@ -29,29 +29,29 @@ $ pip install -r requirements.txt
 ```
 
 
-## Datasets
+## Datasets 🗃️
 
 [Insert dataset links here]
 
 * [Competition data](https://www.kaggle.com/competitions/learning-equality-curriculum-recommendations/data)
 
-## Structure
+## Structure 📂
 
 [Insert text about the structure of the repo/organization]
 
 
 
-## Difficulties
+## Difficulties 💢
 
 [Insert text about difficulties]
 
-## Author Info
+## Author Info 📙
 
 | Author              | Links            |
 | :-----------------: | :--------------: |
 | Catherine Rasgaitis | [![GitHub Badge](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/crasgaitis) [![Kaggle Badge](https://img.shields.io/badge/Kaggle-1DA1F2?style=for-the-badge&logo=kaggle&logoColor=white)](https://www.kaggle.com/catherinerasgaitis) [![LinkedIn Badge](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/catherine-rasgaitis/) |
 | Vincent Tu          | [![GitHub Badge](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/alckasoc) [![Kaggle Badge](https://img.shields.io/badge/Kaggle-1DA1F2?style=for-the-badge&logo=kaggle&logoColor=white)](https://www.kaggle.com/vincenttu) [![LinkedIn Badge](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/vincent-tu-422b18208/) |
 
-## Thank you!
+## Thank you! 👋
 
 [Insert thank you note!]
