@@ -1,6 +1,6 @@
-# Kaggle Learning-Equality-Curriculum-Recommendations
-
 [Insert banner and badges here]
+
+# Kaggle Learning-Equality-Curriculum-Recommendations
 
 ## Table of Contents:
 - [Requirements & Usage](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#requirements--usage)
@@ -12,15 +12,34 @@
 
 ## Requirements & Usage
 
-[Insert requirements]
+[Insert more details about requirements (e.g. compute hardware, python  version, etc)]
+
+If you haven't already, we recommend using a *virtual environment* before cloning. For more information on the package system we use, check out [Anaconda](https://www.anaconda.com/).
+
+1. Clone this repo to your local machine.
+
+```
+$ git clone https://github.com/alckasoc/Learning-Equality-Curriculum-Rec
+```
+
+2. Install the requirements.
+
+```
+$ pip install -r requirements.txt
+```
+
 
 ## Datasets
 
 [Insert dataset links here]
 
+* [Competition data](https://www.kaggle.com/competitions/learning-equality-curriculum-recommendations/data)
+
 ## Structure
 
 [Insert text about the structure of the repo/organization]
+
+
 
 ## Difficulties
 
