@@ -39,7 +39,12 @@ $ pip install -r requirements.txt
 
 [Insert text about the structure of the repo/organization]
 
-
+* `custom` is a folder for custom code and community code
+* `diagrams` houses all diagrams used
+* `img` is for images
+* `input` contains competition data, and other data
+* `models` stores our saved models
+* `src` is source code
 
 ## Difficulties 💢
 
