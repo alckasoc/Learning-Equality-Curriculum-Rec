@@ -29,6 +29,12 @@ $ git clone https://github.com/alckasoc/Learning-Equality-Curriculum-Rec
 $ pip install -r requirements.txt
 ```
 
+3. Download the competition data [here](https://www.kaggle.com/competitions/learning-equality-curriculum-recommendations/data).
+
+4. Move the downloaded zip file which should be called `learning-equality-curriculum-recommendations.zip` into the `input` folder.
+
+5. Extract the zip file into `input`. Rename the newly created folder which should be `learning-equality-curriculum-recommendations` to `competition_data`.
+
 
 ## Datasets 🗃️
 
@@ -38,7 +44,7 @@ $ pip install -r requirements.txt
 
 ## Structure 📂
 
-[Insert text about the structure of the repo/organization]
+[Insert text about the structure of the repo/organization; add folder tree diagram]
 
 * `custom` is a folder for custom code and community code
 * `diagrams` houses all diagrams used
