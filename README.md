@@ -3,7 +3,7 @@
 [Insert banner and badges here]
 
 ## Table of Contents:
-- [Requirements & Usage](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#requirements-&-usage)
+- [Requirements & Usage](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#requirements--usage)
 - [Datasets](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#datasets)
 - [Structure](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#structure)
 - [Difficulties](https://github.com/alckasoc/Learning-Equality-Curriculum-Rec#difficulties)
