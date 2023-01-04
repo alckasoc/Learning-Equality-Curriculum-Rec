@@ -85,6 +85,8 @@ The goal of this competition is to streamline the process of matching educationa
 
 ### Contents
 
+* `contents` shape: (154047, 8)
+
 ![topic diagram](../img/eda/nans_content.png)
 ![topic diagram](../img/eda/number_of_contents_per_topic.png)
 
@@ -110,6 +112,10 @@ Public Domain: Public-domain-equivalent license are licenses that grant public-d
 ![](../img/eda/category_counts_by_level.png)
 ![](../img/eda/level_counts_by_channel.png)
 ![](../img/eda/category_counts_by_language.png)
+
+### Correlations
+
+* `correlations` shape: (61517, 2)w
 
 <br><br>
 
