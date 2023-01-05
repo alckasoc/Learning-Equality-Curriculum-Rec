@@ -19,3 +19,6 @@ Kaggle Discussions:
 
 HuggingFace:
 * [Hugging Face Course](https://www.youtube.com/watch?v=00GKzGyWFEs&list=PLo2EIpI_JMQvWfQndUesu0nPBAtZ9gP1o&ab_channel=HuggingFace) by HuggingFace
+
+Articles:
+* [Is F1 the appropriate criterion to use? What about F2, F3,…, F beta?](https://towardsdatascience.com/is-f1-the-appropriate-criterion-to-use-what-about-f2-f3-f-beta-4bd8ef17e285) by Barak Or
