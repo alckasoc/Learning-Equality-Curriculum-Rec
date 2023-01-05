@@ -10,7 +10,7 @@
 - try something with translation models
 - train a contrastive model 
 - train a model to predict confidence (learnable threshold; later)
-- TBD
+- look through past competitions and pretrain on more data and maybe on similar task
 
 ## Approaches
 
