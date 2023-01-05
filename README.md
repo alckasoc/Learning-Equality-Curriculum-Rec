@@ -41,6 +41,9 @@ $ pip install -r requirements.txt
 [Insert dataset links here]
 
 * [Competition data](https://www.kaggle.com/competitions/learning-equality-curriculum-recommendations/data)
+* [Huggingface BERT Variants](https://www.kaggle.com/datasets/sauravmaheshkar/huggingface-bert-variants) by SAURAV MAHESHKAR ☕️
+* [LECR mDistilBERT Sentence Vector](https://www.kaggle.com/datasets/takamichitoda/lecr-mdistilbert-sentence-vector) by LECR mDistilBERT Sentence Vector
+* [sbert models](https://www.kaggle.com/datasets/shkanda/sbert-models) by APOLO
 
 ## 📂 Structure 
 
