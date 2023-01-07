@@ -11,6 +11,9 @@
 - train a contrastive model 
 - train a model to predict confidence (learnable threshold; later)
 - look through past competitions and pretrain on more data and maybe on similar task
+- maybe frame this as an unsupervised learning/contrastive learning problem
+- separate embeddings for title, description, text
+- 
 
 ## Approaches
 
@@ -28,9 +31,9 @@
 ### [LECR Unsupervised Train Set Public](https://www.kaggle.com/code/ragnar123/lecr-unsupervised-train-set-public) by MARTIN KOVACEVIC BUVINIC
 
 * TBD
-    * Combine with 0.235 baseline : 
-    * "" instead of "no title" : 
-    * just KNN : 
+    * Combine with 0.235 baseline : 0.207
+    * 0.235 baseline + KNN and "" instead of "no title" : 0.207
+    * just KNN : 0.204
 * "" instead of "no title"
 * KNN with k=10 with cosine metric
 
