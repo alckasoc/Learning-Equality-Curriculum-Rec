@@ -19,7 +19,7 @@ warnings.filterwarnings("ignore")
 import numpy as np
 import pandas as pd
 import nvidia_smi
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
@@ -30,7 +30,7 @@ import transformers
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 from transformers import get_cosine_schedule_with_warmup, DataCollatorWithPadding
 from sklearn.model_selection import StratifiedGroupKFold
-os.environ["TOKENIZERS_PARALLELISM"]=True
+os.environ["TOKENIZERS_PARALLELISM"]="true"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -196,7 +196,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
                           loss = losses,
                           grad_norm = grad_norm,
                           lr = scheduler.get_lr()[0]))
-        if step % (cfg.print_freq * 6):
+        if step % (cfg.print_freq * 6) == 0:
             get_vram()
 
     return losses.avg
@@ -230,7 +230,7 @@ def valid_fn(valid_loader, model, criterion, device, cfg):
                           loss = losses,
                           remain = timeSince(start, float(step + 1) / len(valid_loader))))
             
-        if step % (cfg.print_freq * 6):
+        if step % (cfg.print_freq * 6) == 0:
             get_vram()
             
     predictions = np.concatenate(preds, axis = 0)
