@@ -5,5 +5,7 @@ torch
 transformers
 tokenizers
 scikit-learn
+nvidia-ml-py3
+wandb
 # cupy
 # cuml
