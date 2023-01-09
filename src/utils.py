@@ -23,12 +23,12 @@ def f2_score(y_true, y_pred):
     f2 = tp / (tp + 0.2 * fp + 0.8 * fn)
     return round(f2.mean(), 4)
 
-def seed_everything(cfg):
-    random.seed(cfg.seed)
-    os.environ['PYTHONHASHSEED'] = str(cfg.seed)
-    np.random.seed(cfg.seed)
-    torch.manual_seed(cfg.seed)
-    torch.cuda.manual_seed(cfg.seed)
+def seed_everything(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     
 class AverageMeter(object):

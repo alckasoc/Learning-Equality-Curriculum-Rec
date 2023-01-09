@@ -23,21 +23,22 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 from torch.utils.checkpoint import checkpoint
 import tokenizers
 import transformers
-from transformers import AutoTokenizer, AutoModel, AutoConfig
+from transformers import AutoTokenizer
 from transformers import get_cosine_schedule_with_warmup, DataCollatorWithPadding
-from sklearn.model_selection import StratifiedGroupKFold
+
 os.environ["TOKENIZERS_PARALLELISM"]="true"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Custom imports.
-from utils import f2_score, seed_everything, AverageMeter, timeSince, get_vram, get_param_counts, clean_model_folder
-from model_utils import MeanPooling
-from train_utils import get_model_fold_paths, save_best_models, select_optimizer, select_scheduler
+from utils import f2_score, seed_everything, AverageMeter, timeSince, get_vram, get_param_counts
+from baseline_utils.dataset import custom_dataset, collate
+from baseline_utils.model import custom_model
+from baseline_utils.utils import get_max_length, get_best_threshold, get_optimizer_params
 
 import wandb
 wandb.login()
@@ -46,20 +47,23 @@ wandb.login()
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--model", default="xlm-roberta-base", type=str)
 parser.add_argument("--correlations", default="../input/correlations.csv", type=str)
-parser.add_argument("--train", default="../input/train.csv", type=str)
+parser.add_argument("--train", default="../input/train_5fold.csv", type=str)
 parser.add_argument("--project", default="LECR_0.297_baseline", type=str)
 parser.add_argument("--project_run_root", default="test", type=str)
 parser.add_argument("--save_root", default="../models/0297_baseline/", type=str)
 parser.add_argument("--fold", default=0, type=int)
 parser.add_argument("--patience", default=1, type=int)
+parser.add_argument("--debug", default=0, type=int)
 args = parser.parse_args()
 print(args)
 print()
 
+seed = 42
+
 class CFG:
     print_freq = 500
     num_workers = 4
-    model = args.model # "bigscience/bloom-560m"
+    model = args.model 
     tokenizer = AutoTokenizer.from_pretrained(model)
     gradient_checkpointing = False
     num_cycles = 0.5
@@ -73,101 +77,6 @@ class CFG:
     weight_decay = 0.01
     max_grad_norm = 0.012
     max_len = 512
-    n_folds = 5
-    seed = 42
-
-def read_data(train):
-    train['title1'].fillna("Title does not exist", inplace = True)
-    train['title2'].fillna("Title does not exist", inplace = True)
-
-    # Create feature column
-    train['text'] = train['title1'] + '[SEP]' + train['title2']
-    
-    return train
-
-def cv_split(train, cfg):
-    kfold = StratifiedGroupKFold(n_splits = cfg.n_folds, shuffle = True, random_state = cfg.seed)
-    for num, (train_index, val_index) in enumerate(kfold.split(train, train['target'], train['topics_ids'])):
-        train.loc[val_index, 'fold'] = int(num)
-    train['fold'] = train['fold'].astype(int)
-    
-    return train
-
-def get_max_length(train, cfg):
-    lengths = []
-    for text in tqdm(train['text'].fillna("").values, total = len(train)):
-        length = len(cfg.tokenizer(text, add_special_tokens = False)['input_ids'])
-        lengths.append(length)
-    cfg.max_len = max(lengths) + 2 # cls & sep
-    print(f"max_len: {cfg.max_len}")
-
-def prepare_input(text, cfg):
-    inputs = cfg.tokenizer.encode_plus(
-        text, 
-        return_tensors = None, 
-        add_special_tokens = True, 
-        max_length = cfg.max_len,
-        pad_to_max_length = True,
-        truncation = True
-    )
-    for k, v in inputs.items():
-        inputs[k] = torch.tensor(v, dtype = torch.long)
-    return inputs
-
-class custom_dataset(Dataset):
-    def __init__(self, df, cfg):
-        self.cfg = cfg
-        self.texts = df['text'].values
-        self.labels = df['target'].values
-    def __len__(self):
-        return len(self.texts)
-    def __getitem__(self, item):
-        inputs = prepare_input(self.texts[item], self.cfg)
-        label = torch.tensor(self.labels[item], dtype = torch.float)
-        return inputs, label
-    
-def collate(inputs):
-    mask_len = int(inputs["attention_mask"].sum(axis=1).max())
-    for k, v in inputs.items():
-        inputs[k] = inputs[k][:,:mask_len]
-    return inputs
-
-class custom_model(nn.Module):
-    def __init__(self, cfg):
-        super().__init__()
-        self.cfg = cfg
-        self.config = AutoConfig.from_pretrained(cfg.model, output_hidden_states = True)
-        self.config.hidden_dropout = 0.0
-        self.config.hidden_dropout_prob = 0.0
-        self.config.attention_dropout = 0.0
-        self.config.attention_probs_dropout_prob = 0.0
-        self.model = AutoModel.from_pretrained(cfg.model, config = self.config)
-        if self.cfg.gradient_checkpointing:
-            self.model.gradient_checkpointing_enable()
-        self.pool = MeanPooling()
-        self.fc = nn.Linear(self.config.hidden_size, 1)
-        self._init_weights(self.fc)
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
-            if module.bias is not None:
-                module.bias.data.zero_()
-        elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
-            if module.padding_idx is not None:
-                module.weight.data[module.padding_idx].zero_()
-        elif isinstance(module, nn.LayerNorm):
-            module.bias.data.zero_()
-            module.weight.data.fill_(1.0)
-    def feature(self, inputs):
-        outputs = self.model(**inputs)
-        last_hidden_state = outputs.last_hidden_state
-        feature = self.pool(last_hidden_state, inputs['attention_mask'])
-        return feature
-    def forward(self, inputs):
-        feature = self.feature(inputs)
-        output = self.fc(feature)
-        return output
 
 # =========================================================================================
 # Train function loop
@@ -210,7 +119,9 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
                           loss = losses,
                           grad_norm = grad_norm,
                           lr = scheduler.get_lr()[0]))
-        if step % (cfg.print_freq * 6) == 0:
+            if args.debug:
+                get_vram()
+        if not args.debug and step % (cfg.print_freq * 6) == 0:
             get_vram()
 
     return losses.avg
@@ -251,38 +162,6 @@ def valid_fn(valid_loader, model, criterion, device, cfg):
     
     return losses.avg, predictions
 
-def get_best_threshold(x_val, val_predictions, correlations):
-    best_score = 0
-    best_threshold = None
-    for thres in np.arange(0.001, 0.1, 0.001):
-        x_val['predictions'] = np.where(val_predictions > thres, 1, 0)
-        x_val1 = x_val[x_val['predictions'] == 1]
-        x_val1 = x_val1.groupby(['topics_ids'])['content_ids'].unique().reset_index()
-        x_val1['content_ids'] = x_val1['content_ids'].apply(lambda x: ' '.join(x))
-        x_val1.columns = ['topic_id', 'predictions']
-        x_val0 = pd.Series(x_val['topics_ids'].unique())
-        x_val0 = x_val0[~x_val0.isin(x_val1['topic_id'])]
-        x_val0 = pd.DataFrame({'topic_id': x_val0.values, 'predictions': ""})
-        x_val_r = pd.concat([x_val1, x_val0], axis = 0, ignore_index = True)
-        x_val_r = x_val_r.merge(correlations, how = 'left', on = 'topic_id')
-        score = f2_score(x_val_r['content_ids'], x_val_r['predictions'])
-        if score > best_score:
-            best_score = score
-            best_threshold = thres
-    return best_score, best_threshold
-
-def get_optimizer_params(model, encoder_lr, decoder_lr, weight_decay = 0.0):
-    no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-    optimizer_parameters = [
-        {'params': [p for n, p in model.model.named_parameters() if not any(nd in n for nd in no_decay)],
-        'lr': encoder_lr, 'weight_decay': weight_decay},
-        {'params': [p for n, p in model.model.named_parameters() if any(nd in n for nd in no_decay)],
-        'lr': encoder_lr, 'weight_decay': 0.0},
-        {'params': [p for n, p in model.named_parameters() if "model" not in n],
-        'lr': decoder_lr, 'weight_decay': 0.0}
-    ]
-    return optimizer_parameters
-
 if __name__ == "__main__":
     correlations = args.correlations
     train = args.train
@@ -295,19 +174,16 @@ if __name__ == "__main__":
     patience = args.patience
     
     # Seed everything.
-    seed_everything(CFG)
+    seed_everything(seed)
 
+    cfg = CFG()
+    
     # Read data.
     correlations = pd.read_csv(correlations)
-    train = read_data(pd.read_csv(train))
-
-    # Split data.
-    cv_split(train, CFG)
+    train = pd.read_csv(train)
 
     # Get max length.
     get_max_length(train, CFG)
-
-    cfg = CFG()
 
     # Split train & validation.
     x_train = train[train['fold'] != fold]
