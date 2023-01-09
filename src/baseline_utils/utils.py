@@ -31,6 +31,17 @@ def get_max_length(train, cfg):
     cfg.max_len = max(lengths) + 2 # cls & sep
     print(f"max_len: {cfg.max_len}")
     
+def f2_score(y_true, y_pred):
+    y_true = y_true.apply(lambda x: set(x.split()))
+    y_pred = y_pred.apply(lambda x: set(x.split()))
+    tp = np.array([len(x[0] & x[1]) for x in zip(y_true, y_pred)])
+    fp = np.array([len(x[1] - x[0]) for x in zip(y_true, y_pred)])
+    fn = np.array([len(x[0] - x[1]) for x in zip(y_true, y_pred)])
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f2 = tp / (tp + 0.2 * fp + 0.8 * fn)
+    return round(f2.mean(), 4)
+    
 def get_best_threshold(x_val, val_predictions, correlations):
     best_score = 0
     best_threshold = None

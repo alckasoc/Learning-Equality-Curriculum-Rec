@@ -45,6 +45,7 @@ wandb.login()
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("--epochs", default=5, type=int)
 parser.add_argument("--model", default="xlm-roberta-base", type=str)
 parser.add_argument("--correlations", default="../input/correlations.csv", type=str)
 parser.add_argument("--train", default="../input/train_5fold.csv", type=str)
@@ -68,7 +69,6 @@ class CFG:
     gradient_checkpointing = False
     num_cycles = 0.5
     warmup_ratio = 0.1
-    epochs = 5
     encoder_lr = 1e-5
     decoder_lr = 1e-4
     eps = 1e-6
@@ -163,6 +163,7 @@ def valid_fn(valid_loader, model, criterion, device, cfg):
     return losses.avg, predictions
 
 if __name__ == "__main__":
+    epochs = args.epochs
     correlations = args.correlations
     train = args.train
     project = args.project
@@ -227,7 +228,7 @@ if __name__ == "__main__":
     )
 
     # Scheduler.
-    num_train_steps = int(len(x_train) / cfg.batch_size * cfg.epochs)
+    num_train_steps = int(len(x_train) / cfg.batch_size * epochs)
     num_warmup_steps = num_train_steps * cfg.warmup_ratio
     scheduler = get_cosine_schedule_with_warmup(
         optimizer, 
@@ -257,7 +258,7 @@ if __name__ == "__main__":
 
     # Training & validation loop.
     best_score, cnt = 0, 0
-    for epoch in range(cfg.epochs):
+    for epoch in range(epochs):
         start_time = time.time()
 
         # Train.
@@ -290,7 +291,7 @@ if __name__ == "__main__":
             save_p = os.path.join(save_root, save_m)
             torch.save(model.state_dict(), save_p)
             val_predictions = predictions
-        else:
+        elif patience != -1 and patience > 0:
             cnt += 1
             if cnt == patience:
                 print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')

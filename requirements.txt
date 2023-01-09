@@ -7,5 +7,6 @@ tokenizers
 scikit-learn
 nvidia-ml-py3
 wandb
+bitsandbytes
 # cupy
 # cuml
