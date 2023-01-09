@@ -6,6 +6,12 @@ import os
 import torch
 import nvidia_smi
 
+def clean_model_folder(save_root, best_m):
+    save_names = os.listdir(save_root)
+    for m in save_names:
+        if os.path.isfile(m) and m not in best_m:
+            os.remove(os.path.join(save_root, m))
+
 def f2_score(y_true, y_pred):
     y_true = y_true.apply(lambda x: set(x.split()))
     y_pred = y_pred.apply(lambda x: set(x.split()))

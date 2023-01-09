@@ -35,17 +35,31 @@ os.environ["TOKENIZERS_PARALLELISM"]="true"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Custom imports.
-from utils import f2_score, seed_everything, AverageMeter, timeSince, get_vram, get_param_counts
+from utils import f2_score, seed_everything, AverageMeter, timeSince, get_vram, get_param_counts, clean_model_folder
 from model_utils import MeanPooling
 from train_utils import get_model_fold_paths, save_best_models, select_optimizer, select_scheduler
 
 import wandb
 wandb.login()
 
+# Arguments.
+parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("--model", default="xlm-roberta-base", type=str)
+parser.add_argument("--correlations", default="../input/correlations.csv", type=str)
+parser.add_argument("--train", default="../input/train.csv", type=str)
+parser.add_argument("--project", default="LECR_0.297_baseline", type=str)
+parser.add_argument("--project_run_root", default="test", type=str)
+parser.add_argument("--save_root", default="../models/0297_baseline/", type=str)
+parser.add_argument("--fold", default=0, type=int)
+parser.add_argument("--patience", default=1, type=int)
+args = parser.parse_args()
+print(args)
+print()
+
 class CFG:
     print_freq = 500
     num_workers = 4
-    model = "xlm-roberta-base"
+    model = args.model # "bigscience/bloom-560m"
     tokenizer = AutoTokenizer.from_pretrained(model)
     gradient_checkpointing = False
     num_cycles = 0.5
@@ -269,14 +283,14 @@ def get_optimizer_params(model, encoder_lr, decoder_lr, weight_decay = 0.0):
     ]
     return optimizer_parameters
 
-parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--fold", default=0, type=int)
-parser.add_argument("--patience", default=1, type=int)
-args = parser.parse_args()
-print(args)
-print()
-
 if __name__ == "__main__":
+    correlations = args.correlations
+    train = args.train
+    project = args.project
+    project_run_root = args.project_run_root
+    save_root = args.save_root
+    os.makedirs(save_root, exist_ok=True)
+    
     fold = args.fold
     patience = args.patience
     
@@ -284,8 +298,8 @@ if __name__ == "__main__":
     seed_everything(CFG)
 
     # Read data.
-    correlations = pd.read_csv("../input/correlations.csv")
-    train = read_data(pd.read_csv("../input/train.csv"))
+    correlations = pd.read_csv(correlations)
+    train = read_data(pd.read_csv(train))
 
     # Split data.
     cv_split(train, CFG)
@@ -353,7 +367,6 @@ if __name__ == "__main__":
     print("Printing GPU stats...")
     get_vram()
 
-    project = "LECR_0.297_baseline"
     cfg_params = [i for i in dir(cfg) if "__" not in i]
     cfg_params = dict(zip(cfg_params, [getattr(cfg, i) for i in cfg_params]))
     total_params, trainable_params, nontrainable_params = get_param_counts(model)
@@ -364,10 +377,7 @@ if __name__ == "__main__":
     })
 
     # Initialize run.
-    save_root = "../models/0297_baseline/"
-    os.makedirs(save_root, exist_ok=True)
-
-    run = wandb.init(project=project, config=cfg_params, name=f"fold{fold}", dir="/tmp")
+    run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
 
     # Training & validation loop.
     best_score, cnt = 0, 0
@@ -400,7 +410,8 @@ if __name__ == "__main__":
         if score > best_score:
             best_score = score
             print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
-            save_p = os.path.join(save_root, f"{cfg.model.replace('/', '-')}_fold{fold}_ep{epoch}.pth")
+            save_m = f"{cfg.model.replace('/', '-')}_fold{fold}_ep{epoch}.pth"
+            save_p = os.path.join(save_root, save_m)
             torch.save(model.state_dict(), save_p)
             val_predictions = predictions
         else:
@@ -411,7 +422,7 @@ if __name__ == "__main__":
                 torch.save(model.state_dict(), save_p)
                 val_predictions = predictions
                 break
-        
+                
     torch.cuda.empty_cache()
     gc.collect()
     
