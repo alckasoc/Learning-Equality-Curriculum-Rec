@@ -55,6 +55,7 @@ parser.add_argument("--save_root", default="../models/0297_baseline/", type=str)
 parser.add_argument("--fold", default=0, type=int)
 parser.add_argument("--patience", default=1, type=int)
 parser.add_argument("--debug", default=0, type=int)
+parser.add_argument("--gradient_checkpointing", default=0, type=int)
 args = parser.parse_args()
 print(args)
 print()
@@ -66,7 +67,6 @@ class CFG:
     num_workers = 4
     model = args.model 
     tokenizer = AutoTokenizer.from_pretrained(model)
-    gradient_checkpointing = False
     num_cycles = 0.5
     warmup_ratio = 0.1
     encoder_lr = 1e-5
@@ -173,6 +173,7 @@ if __name__ == "__main__":
     
     fold = args.fold
     patience = args.patience
+    gradient_checkpointing = args.gradient_checkpointing
     
     # Seed everything.
     seed_everything(seed)
@@ -210,7 +211,7 @@ if __name__ == "__main__":
     )
 
     # Model.
-    model = custom_model(cfg)
+    model = custom_model(cfg, gradient_checkpointing=gradient_checkpointing)
     _ = model.to(device)
 
     # Optimizer.
@@ -290,6 +291,12 @@ if __name__ == "__main__":
             save_m = f"{cfg.model.replace('/', '-')}_fold{fold}_ep{epoch}.pth"
             save_p = os.path.join(save_root, save_m)
             torch.save(model.state_dict(), save_p)
+            
+            # W&B save model as artifact.
+            artifact = wandb.Artifact(cfg.model.replace('/', '-'), type='model')
+            artifact.add_file(save_p, name=f"fold{fold}_ep{epoch}.pth")
+            run.log_artifact(artifact)
+            
             val_predictions = predictions
         elif patience != -1 and patience > 0:
             cnt += 1
@@ -297,6 +304,12 @@ if __name__ == "__main__":
                 print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
                 save_p = os.path.join(save_root, f"{cfg.model.replace('/', '-')}_fold{fold}_ep{epoch}.pth")
                 torch.save(model.state_dict(), save_p)
+                
+                # W&B save model as artifact.
+                artifact = wandb.Artifact(cfg.model.replace('/', '-'), type='model')
+                artifact.add_file(save_p, name=f"fold{fold}_ep{epoch}.pth")
+                run.log_artifact(artifact)
+                
                 val_predictions = predictions
                 break
                 

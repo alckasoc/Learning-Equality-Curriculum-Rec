@@ -14,7 +14,7 @@ class MeanPooling(nn.Module):
         return mean_embeddings
     
 class custom_model(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, gradient_checkpointing=False):
         super().__init__()
         self.cfg = cfg
         self.config = AutoConfig.from_pretrained(cfg.model, output_hidden_states = True)
@@ -23,7 +23,7 @@ class custom_model(nn.Module):
         self.config.attention_dropout = 0.0
         self.config.attention_probs_dropout_prob = 0.0
         self.model = AutoModel.from_pretrained(cfg.model, config = self.config)
-        if self.cfg.gradient_checkpointing:
+        if gradient_checkpointing:
             self.model.gradient_checkpointing_enable()
         self.pool = MeanPooling()
         self.fc = nn.Linear(self.config.hidden_size, 1)
