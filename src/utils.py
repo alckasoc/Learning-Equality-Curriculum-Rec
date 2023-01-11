@@ -6,11 +6,27 @@ import os
 import torch
 import nvidia_smi
 
-def clean_model_folder(save_root, best_m):
-    save_names = os.listdir(save_root)
-    for m in save_names:
-        if os.path.isfile(m) and m not in best_m:
-            os.remove(os.path.join(save_root, m))
+def clean_model_folder(save_p, by="epoch"):
+    if by == "epoch":
+        save_names = os.listdir(save_p)
+        eps = []
+        for m in save_names:
+            p = os.path.join(save_p, m)
+            if os.path.isfile(p):
+                try:
+                    ep = m.split("ep")[1].split("_")[0].split(".")[0]
+                except IndexError:
+                    continue
+                eps.append((p, ep))
+                
+        # First is largest.
+        eps_sorted = sorted(eps, key=lambda x: x[1], reverse=True)
+        _ = eps_sorted.pop(0)    
+    else:
+        raise ValueError(f"{by} is not supported.")
+
+    for i in eps_sorted:
+        os.remove(i[0])
 
 def f2_score(y_true, y_pred):
     y_true = y_true.apply(lambda x: set(x.split()))

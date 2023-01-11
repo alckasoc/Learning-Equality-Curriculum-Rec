@@ -169,9 +169,10 @@ if __name__ == "__main__":
     project = args.project
     project_run_root = args.project_run_root
     save_root = args.save_root
-    os.makedirs(save_root, exist_ok=True)
     
     fold = args.fold
+    save_p_root = os.path.join(save_root, project_run_root, f"fold{fold}")
+    os.makedirs(save_p_root, exist_ok=True)
     patience = args.patience
     gradient_checkpointing = args.gradient_checkpointing
     
@@ -288,13 +289,12 @@ if __name__ == "__main__":
         if score > best_score:
             best_score = score
             print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
-            save_m = f"{cfg.model.replace('/', '-')}_fold{fold}_ep{epoch}.pth"
-            save_p = os.path.join(save_root, save_m)
+            save_p = os.path.join(save_p_root, f"ep{epoch}.pth")
             torch.save(model.state_dict(), save_p)
             
             # W&B save model as artifact.
             artifact = wandb.Artifact(cfg.model.replace('/', '-'), type='model')
-            artifact.add_file(save_p, name=f"fold{fold}_ep{epoch}.pth")
+            artifact.add_file(save_p, name=f"ep{epoch}.pth")
             run.log_artifact(artifact)
             
             val_predictions = predictions
@@ -302,12 +302,12 @@ if __name__ == "__main__":
             cnt += 1
             if cnt == patience:
                 print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
-                save_p = os.path.join(save_root, f"{cfg.model.replace('/', '-')}_fold{fold}_ep{epoch}.pth")
+                save_p = os.path.join(save_p_root, f"ep{epoch}.pth")
                 torch.save(model.state_dict(), save_p)
                 
                 # W&B save model as artifact.
                 artifact = wandb.Artifact(cfg.model.replace('/', '-'), type='model')
-                artifact.add_file(save_p, name=f"fold{fold}_ep{epoch}.pth")
+                artifact.add_file(save_p, name=f"ep{epoch}.pth")
                 run.log_artifact(artifact)
                 
                 val_predictions = predictions
