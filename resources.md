@@ -25,6 +25,7 @@ Kaggle Discussions:
 * [same title contents don't necessarily relate to the same topic](https://www.kaggle.com/competitions/learning-equality-curriculum-recommendations/discussion/374621) by TAKAMICHI TODA
 * [How to use columns other than title?](https://www.kaggle.com/competitions/learning-equality-curriculum-recommendations/discussion/375947) by TAKAMICHI TODA
 * [Training large model with limited memory](https://www.kaggle.com/competitions/learning-equality-curriculum-recommendations/discussion/376183) by THE DEVASTATOR
+* [Product Update: Create and Manage Datasets via Kaggle's API](https://www.kaggle.com/product-feedback/52640) by MEG RISDAL
 
 HuggingFace:
 * [Hugging Face Course](https://www.youtube.com/watch?v=00GKzGyWFEs&list=PLo2EIpI_JMQvWfQndUesu0nPBAtZ9gP1o&ab_channel=HuggingFace) by HuggingFace
