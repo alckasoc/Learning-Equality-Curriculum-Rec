@@ -11,7 +11,7 @@ def read_data(train):
     train['title2'].fillna("Title does not exist", inplace = True)
 
     # Create feature column
-    train['text'] = train['title1'] + '[SEP]' + train['title2']
+    train['text'] = train['title1'] + ' [SEP] ' + train['title2']
     
     return train
 

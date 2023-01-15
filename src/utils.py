@@ -6,6 +6,101 @@ import os
 import torch
 import nvidia_smi
 
+def get_context_df(topics, max_parent_nodes=-1, max_child_nodes=-1):
+    context_df = {
+        "topics_ids": [],
+        "topic_parent_title": [],
+        "topic_parent_description": [],
+        "topic_child_title": [],
+        "topic_child_description": [] 
+    }
+
+    for topic_id in tqdm(topics.id, leave=True, position=0, total=len(topics.id)):
+
+        parents, _, children = get_topic_context(topic_id, topics, max_parent_nodes, max_child_nodes)
+
+        # Add parent to df.
+        parent_title_str = ""
+        parent_desc_str = ""
+        for title, desc in parents:
+            if title is not np.nan:
+                parent_title_str += title + " [SEP] "
+            if desc is not np.nan:
+                parent_desc_str += desc + " [SEP] "
+
+        parent_title_str = parent_title_str.strip()
+        parent_desc_str = parent_desc_str.strip()
+
+        parent_title_str = np.nan if parent_title_str == "" else parent_title_str
+        parent_desc_str = np.nan if parent_desc_str == "" else parent_desc_str
+
+        # Add children to df.
+        child_title_str = ""
+        child_desc_str = ""
+        for title, desc in children:
+            if title is not np.nan:
+                child_title_str += title + " [SEP] "
+            if desc is not np.nan:
+                child_desc_str += desc + " [SEP] "
+
+        child_title_str = child_title_str.strip()
+        child_desc_str = child_desc_str.strip()
+
+        child_title_str = np.nan if child_title_str == "" else child_title_str
+        child_desc_str = np.nan if child_desc_str == "" else child_desc_str
+
+        context_df["topics_ids"].append(topic_id)
+        context_df["topic_parent_title"].append(parent_title_str)
+        context_df["topic_parent_description"].append(parent_desc_str)
+        context_df["topic_child_title"].append(child_title_str)
+        context_df["topic_child_description"].append(child_desc_str)
+
+    return pd.DataFrame(context_df)
+
+def get_topic_context(topic_id, topics, max_parent_nodes=-1, max_child_nodes=-1):
+    parents, children = [], []
+    
+    # Traverse upwards.
+    cnt = 0
+    tmp = topics[topics["id"]==topic_id]
+    while not tmp.parent.isna().values[0]:
+        tmp = topics[topics["id"]==tmp.parent.values[0]]
+        parents.append((tmp.title.values[0], tmp.description.values[0]))
+        
+        if max_parent_nodes > 0:
+            cnt += 1
+            if cnt == max_parent_nodes: break
+        
+    # Traverse downwards.
+    cnt = 0
+    tmp = topics[topics["parent"]==topic_id]
+    
+    stack = []
+
+    # Populate initial stack.
+    for i in range(len(tmp)-1, -1, -1):
+        stack.append(tmp.iloc[i])
+            
+    # Traverse.
+    while len(stack) > 0:
+        row = stack.pop()
+        children.append((row.title, row.description))
+
+        if max_child_nodes > 0:
+            cnt += 1
+            if cnt == max_child_nodes: break
+        
+        tmp = topics[topics["parent"]==row["id"]]
+        if not tmp.empty:
+            for i in range(len(tmp)-1, -1, -1):
+                stack.append(tmp.iloc[i])
+            
+    # Current topic node.
+    tmp = topics[topics["id"]==topic_id]
+    curr = [(tmp.title.values[0], tmp.description.values[0])]
+            
+    return parents, curr, children
+
 def clean_model_folder(save_p, by="epoch"):
     if by == "epoch":
         save_names = os.listdir(save_p)

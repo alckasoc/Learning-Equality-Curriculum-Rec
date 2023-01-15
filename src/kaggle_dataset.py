@@ -7,7 +7,7 @@ import argparse
 username = "vincenttu"
 
 os.environ["KAGGLE_USERNAME"] = username
-os.environ["KAGGLE_KEY"] = ""
+os.environ["KAGGLE_KEY"] = "d8cb10c6ebfb6529afda64a2a04745f7"
 
 import kaggle
 
