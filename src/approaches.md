@@ -14,7 +14,8 @@
 - look through past competitions and pretrain on more data and maybe on similar task
 - maybe frame this as an unsupervised learning/contrastive learning problem
 - separate embeddings for title, description, text
-- 
+- approach it as a recommender system task
+- leverage the tree nature of the data
 
 ## Approaches
 
