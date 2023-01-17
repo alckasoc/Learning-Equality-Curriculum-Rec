@@ -12,5 +12,6 @@ langdetect
 kaggle
 nltk
 iso-639
+stopwordsiso
 # cupy
 # cuml
