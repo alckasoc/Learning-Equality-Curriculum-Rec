@@ -8,5 +8,9 @@ scikit-learn
 nvidia-ml-py3
 wandb
 bitsandbytes
+langdetect
+kaggle
+nltk
+iso-639
 # cupy
 # cuml
