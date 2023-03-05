@@ -1,0 +1,17 @@
+num_workers: 0
+model_name: 'model70'
+config_path: '../input/model70/config.pth'
+tokenizer_path: '../input/model23/tokenizer'
+model: "microsoft-deberta-v3-large"
+gradient_checkpointing: False
+batch_size: 8
+max_len: 650
+pooling_type: 'LSTMPooling'
+hidden_size: 512
+epochs: 10
+correlations: "../input/correlations.csv"
+train: "../input/prep_cleaned_train_context_5fold.csv"
+project: "LECR_ELL_FT"
+project_run_root: "model70"
+save_root: "../models/ELL_rank1_finetuned/"
+patience: 2
