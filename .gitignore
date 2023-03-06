@@ -1,5 +1,7 @@
 input/
-models/
+*.pth
+*.pt
+*.pkl
 .ipynb_checkpoints/
 **/__pycache__/
 .jupyter/

@@ -4,6 +4,7 @@ import time
 import math
 import random
 import warnings
+import yaml
 import argparse
 warnings.filterwarnings("ignore")
 import numpy as np
@@ -29,8 +30,8 @@ from utils import dictionary_to_namespace, f2_score, seed_everything, get_vram, 
 from utils import AverageMeter, timeSince
 from utils import get_max_length, get_best_threshold
 
-from datasets.dataset import custom_dataset, collate
-from models.model import custom_model
+from datasets.datasets import custom_dataset, collate
+from models.utils import get_model
 from optimizers.optimizers import get_optimizer
 from adversarial_learning.awp import AWP
 from train_utils import train_fn, valid_fn
@@ -40,105 +41,151 @@ wandb.login()
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--epochs", default=5, type=int)
-parser.add_argument("--model", default="xlm-roberta-base", type=str)
-parser.add_argument("--correlations", default="../input/correlations.csv", type=str)
-parser.add_argument("--train", default="../input/train_5fold.csv", type=str)
-parser.add_argument("--project", default="LECR_0.297_baseline", type=str)
-parser.add_argument("--project_run_root", default="test", type=str)
-parser.add_argument("--save_root", default="../models/0297_baseline/", type=str)
+parser.add_argument("--cfg", default="./config/model23.yaml", type=str)
 parser.add_argument("--fold", default=0, type=int)
-parser.add_argument("--patience", default=1, type=int)
 parser.add_argument("--debug", default=0, type=int)
-parser.add_argument("--gradient_checkpointing", default=0, type=int)
 args = parser.parse_args()
 print(args)
 print()
 
 seed = 42
 
+# Seed everything.
+seed_everything(seed)
+
 if __name__ == "__main__":
     with open() as f:
         cfg = yaml.load()
     
-    ####################################################################
     cfg = dictionary_to_namespace(cfg)
     
-#     training:
-#     epochs: 3
-#     gradient_accumulation_steps: 1
-#     evaluate_n_times_per_epoch: 2
-#     max_grad_norm: 1000
-#     unscale: False
-    ####################################################################
-    
-    epochs = args.epochs
-    correlations = args.correlations
-    train = args.train
-    project = args.project
-    project_run_root = args.project_run_root
-    save_root = args.save_root
-    
+    # Utils.
+    debug = cfg.utils.debug
+
+    correlations = cfg.utils.correlations
+    train = cfg.utils.train
+    project = cfg.utils.project
+    project_run_root = cfg.utils.project_run_root
+    save_root = cfg.utils.save_root
+
+    num_folds = cfg.utils.num_folds
+
+    num_workers = cfg.utils.num_workers
+
+    # Training.
+    epochs = cfg.training.epochs
+
+    train_batch_size = cfg.training.train_batch_size
+    val_batch_size = cfg.training.val_batch_size
+
+    max_length = cfg.training.max_length
+
+    gradient_accumulation_steps: cfg.training.gradient_accumulation_steps
+    max_grad_norm: cfg.training.max_grad_norm
+    unscale: cfg.training.unscale
+    patience: cfg.training.patience
+
+    # Model.
+    tokenizer_path = cfg.model.tokenizer_path
+
+    backbone_type = cfg.model.backbone_type
+    pretrained_backbone = cfg.model.pretrained_backbone
+    from_checkpoint = cfg.model.from_checkpoint
+    model_checkpoint_path = cfg.model.model_checkpoint_path
+    backbone_cfg = cfg.model.backbone_cfg
+
+    pooling_type = cfg.model.pooling_type
+    pooling_cfg = cfg.model.pooling_cfg
+
+    gradient_checkpointing = cfg.model.gradient_checkpointing
+    freeze_embeddings = cfg.model.freeze_embeddings
+    freeze_n_layers = cfg.model.freeze_n_layers
+    reinitialize_n_layers = cfg.model.reinitialize_n_layers
+
+    # Optimizer.
+    use_swa = cfg.optimizer.use_swa
+    swa_cfg = cfg.optimizer.swa_cfg
+    encoder_lr = cfg.optimizer.encoder_lr
+    embeddings_lr = cfg.optimizer.embeddings_lr
+    decoder_lr = cfg.optimizer.decoder_lr
+    group_lt_multiplier = cfg.optimizer.group_lt_multiplier
+    n_groups = cfg.optimizer.n_groups
+    eps = cfg.optimizer.eps
+    betas = cfg.optimizer.betas
+    weight_decay = cfg.optimizer.weight_decay
+
     fold = args.fold
+    assert fold >= 0 and fold <= num_folds, "Fold is not in range."
     save_p_root = os.path.join(save_root, project_run_root, f"fold{fold}")
     os.makedirs(save_p_root, exist_ok=True)
-    patience = args.patience
-    gradient_checkpointing = args.gradient_checkpointing
-    
-    # Seed everything.
-    seed_everything(seed)
-
-    cfg = CFG()
     
     # Read data.
     correlations = pd.read_csv(correlations)
-    train = pd.read_csv(train)
+    train = pd.read_csv(train, lineterminator="\n")
 
-    # Get max length.
-    get_max_length(train, CFG)
+    # Instantiate tokenizer & datasets/dataloaders. 
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
 
-    # Split train & validation.
-    x_train = train[train['fold'] != fold]
-    x_val = train[train['fold'] == fold]
+    x_train = train[train['topic_fold'] != fold]
+    x_val = train[train['topic_fold'] == fold]
     valid_labels = x_val['target'].values
-    train_dataset = custom_dataset(x_train, cfg)
-    valid_dataset = custom_dataset(x_val, cfg)
+
+    train_dataset = custom_dataset(x_train, tokenizer, max_length)
+    valid_dataset = custom_dataset(x_val, tokenizer, max_length)
+
     train_loader = DataLoader(
         train_dataset, 
-        batch_size = cfg.batch_size, 
+        batch_size = train_batch_size, 
         shuffle = True, 
-        num_workers = cfg.num_workers, 
+        num_workers = num_workers, 
         pin_memory = True, 
         drop_last = True
     )
     valid_loader = DataLoader(
         valid_dataset, 
-        batch_size = cfg.batch_size, 
+        batch_size = val_batch_size, 
         shuffle = False, 
-        num_workers = cfg.num_workers, 
+        num_workers = num_workers, 
         pin_memory = True, 
         drop_last = False
     )
 
     # Model.
-    model = custom_model(cfg, gradient_checkpointing=gradient_checkpointing)
+    model = get_model(
+        backbone_type, 
+
+        pretrained_backbone,
+        from_checkpoint,
+        model_checkpoint_path,
+        backbone_cfg, 
+
+        pooling_type,
+        pooling_cfg,
+
+        gradient_checkpointing,
+        freeze_embeddings,
+        freeze_n_layers,
+        reinitialize_n_layers,
+
+        train=True
+    )
     _ = model.to(device)
 
     # Optimizer.
     optimizer = get_optimizer(
         model,
-        cfg.optimizer.encoder_lr, # 2e-6
-        cfg.optimizer.decoder_lr, # 9e-6
-        cfg.optimizer.embeddings_lr,  # 1.5e-6
-        cfg.optimizer.group_lt_multiplier,  # 0.95
-        cfg.optimizer.weight_decay,  # 0.01
-        cfg.optimizer.n_groups,  # 6
-        cfg.optimizer.eps,  #     eps: 1.e-6
-        cfg.optimizer.betas,  #    betas: [0.9, 0.999]
-        cfg.optimizer.use_swa,
-        cfg.optimizer.swa_start, 
-        cfg.optimizer.swa_freq, 
-        cfg.optimizer.swa_lr
+        encoder_lr,
+        decoder_lr,
+        embeddings_lr,
+        group_lt_multiplier,
+        weight_decay,
+        n_groups,
+        eps,
+        betas,
+        use_swa,
+        cfg.optimizer.swa_cfg.swa_start, 
+        cfg.optimizer.swa_cfg.swa_freq, 
+        cfg.optimizer.swa_cfg.swa_lr
     )
     
     # Scheduler.

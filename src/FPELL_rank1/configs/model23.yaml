@@ -1,55 +1,71 @@
-n_workers: 4
+utils:
+    debug: 0
 
-train_print_frequency: 100
-valid_print_frequency: 50
+    correlations: "../../input/correlations.csv"
+    train: "../../input/prep_cleaned_train_context_5fold.csv"
+    project: "FPELL_rank1_LECR"
+    project_run_root: "test0"
+    save_root: "test0"
+    
+    num_folds: 5
 
-train_batch_size: 3
-valid_batch_size: 3
+    num_workers: 0
 
-seed: 42
+training:
+    epochs: 3
 
-n_folds: 5
+    train_batch_size: 3
+    valid_batch_size: 3
 
-max_length: 1024
+    max_length: 1024
+
+    gradient_accumulation_steps: 1
+    max_grad_norm: 1000
+    unscale: False
+    patience: 1
 
 model:
+    tokenizer_path: './models/model23/tokenizer/'
+
     backbone_type: 'microsoft/deberta-v3-large'
     pretrained_backbone: True
-    from_checkpoint: True
-    checkpoint_id: 'model23_pretrain'
+    from_checkpoint: False
+    model_checkpoint_path: '../../input/model23/microsoft-deberta-v3-large_fold0_best.pth'
 
-    backbone_config_path: ''
-    backbone_hidden_dropout: 0.
-    backbone_hidden_dropout_prob: 0.
-    backbone_attention_dropout: 0.
-    backbone_attention_probs_dropout_prob: 0.
+    backbone_cfg:
+        backbone_config_path: ''
+
+        backbone_hidden_dropout: 0.
+        backbone_hidden_dropout_prob: 0.
+        backbone_attention_dropout: 0.
+        backbone_attention_probs_dropout_prob: 0.
 
     pooling_type: 'MeanPooling' # ['MeanPooling', 'ConcatPooling', 'WeightedLayerPooling', 'GRUPooling', 'LSTMPooling', 'AttentionPooling']
+    pooling_cfg:
+        gru_pooling:
+            hidden_size: 1024
+            dropout_rate: 0.1
+            bidirectional: False
 
-    gru_pooling:
-        hidden_size: 1024
-        dropout_rate: 0.1
-        bidirectional: False
+        weighted_pooling:
+            layer_start: 8
+            layer_weights: null
 
-    weighted_pooling:
-        layer_start: 8
-        layer_weights: null
+        wk_pooling:
+            layer_start: 4
+            context_window_size: 2
 
-    wk_pooling:
-        layer_start: 4
-        context_window_size: 2
-
-    lstm_pooling:
-        hidden_size: 1024
-        dropout_rate: 0.1
-        bidirectional: False
-        
-    attention_pooling:
-        hiddendim_fc: 1024
-        dropout: 0.1
-        
-    concat_pooling:
-        n_layers: 4
+        lstm_pooling:
+            hidden_size: 1024
+            dropout_rate: 0.1
+            bidirectional: False
+            
+        attention_pooling:
+            hiddendim_fc: 1024
+            dropout: 0.1
+            
+        concat_pooling:
+            n_layers: 4
 
     gradient_checkpointing: True
 
@@ -57,11 +73,10 @@ model:
     freeze_n_layers: 0
     reinitialize_n_layers: 0
 
-
 optimizer:
     use_swa: False
     
-    swa:
+    swa_cfg:
         swa_start: 10
         swa_freq: 10
         swa_lr: 0.0005
@@ -101,23 +116,3 @@ adversarial_learning:
     adversarial_lr: 0.00001
     adversarial_eps: 0.001
     adversarial_epoch_start: 2
-
-training:
-    epochs: 3
-    apex: True
-    gradient_accumulation_steps: 1
-    evaluate_n_times_per_epoch: 2
-    max_grad_norm: 1000
-    unscale: False
-
-parser.add_argument("--epochs", default=5, type=int)
-parser.add_argument("--model", default="xlm-roberta-base", type=str)
-parser.add_argument("--correlations", default="../input/correlations.csv", type=str)
-parser.add_argument("--train", default="../input/train_5fold.csv", type=str)
-parser.add_argument("--project", default="LECR_0.297_baseline", type=str)
-parser.add_argument("--project_run_root", default="test", type=str)
-parser.add_argument("--save_root", default="../models/0297_baseline/", type=str)
-parser.add_argument("--fold", default=0, type=int)
-parser.add_argument("--patience", default=1, type=int)
-parser.add_argument("--debug", default=0, type=int)
-parser.add_argument("--gradient_checkpointing", default=0, type=int)
