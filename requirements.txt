@@ -13,5 +13,6 @@ kaggle
 nltk
 iso-639
 stopwordsiso
+torchcontrib
 # cupy
 # cuml
