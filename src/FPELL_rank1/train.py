@@ -1,4 +1,5 @@
 import os
+import sys
 import gc
 import time
 import math
@@ -35,6 +36,7 @@ from models.utils import get_model
 from optimizers.optimizers import get_optimizer
 from adversarial_learning.awp import AWP
 from train_utils import train_fn, valid_fn
+from scheduler import get_scheduler
 
 import wandb
 wandb.login()
@@ -114,6 +116,16 @@ if __name__ == "__main__":
     betas = cfg.optimizer.betas
     weight_decay = cfg.optimizer.weight_decay
 
+    # Scheduler.
+    scheduler_type = cfg.scheduler.scheduler_type
+    batch_scheduler = cfg.scheduler.batch_scheduler
+    scheduler_cfg = cfg.scheduler.scheduler_cfg
+
+    # AWP.
+    adversarial_lr = cfg.adversarial_learning.adversarial_lr
+    adversarial_eps = cfg.adversarial_learning.adversarial_eps
+    adversarial_epoch_start = cfg.adversarial_learning.adversarial_epoch_start
+
     fold = args.fold
     assert fold >= 0 and fold <= num_folds, "Fold is not in range."
     save_p_root = os.path.join(save_root, project_run_root, f"fold{fold}")
@@ -189,27 +201,19 @@ if __name__ == "__main__":
     )
     
     # Scheduler.
-    train_steps_per_epoch = int(len(x_train) / cfg.general.train_batch_size)
-    num_train_steps = train_steps_per_epoch * cfg.general.epochs
-    scheduler = get_scheduler(optimizer, cfg.scheduler.scheduler_type, 
-                              num_train_steps=num_train_steps, 
-                              n_warmup_steps=cfg.scheduler.n_warmup_steps, 
-                              n_cycles=cfg.scheduler.n_cycles, 
-                              power=cfg.scheduler.power, 
-                              min_lr=cfg.scheduler.min_lr)
+    train_steps_per_epoch = int(len(x_train) / train_batch_size)
+    num_train_steps = train_steps_per_epoch * epochs
+    scheduler = get_scheduler(optimizer, scheduler_type, 
+                              scheduler_cfg=scheduler_cfg)
     
     awp = AWP(model=model,
           optimizer=optimizer,
-          adv_lr=cfg.adversarial_learning.adversarial_lr,  
-          adv_eps=cfg.adversarial_learning.adversarial_eps,
-          adv_epoch=cfg.adversarial_learning.adversarial_epoch_start)
-    
-#     adversarial_lr: 0.00001
-#     adversarial_eps: 0.001
-#     adversarial_epoch_start: 2
+          adv_lr=adversarial_lr,  
+          adv_eps=adversarial_eps,
+          adv_epoch=adversarial_epoch_start)
 
     # Criterion.
-    criterion = nn.BCEWithLogitsLoss(reduction = "mean")
+    criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
     # Project configuration.
     print("Printing GPU stats...")
@@ -223,6 +227,8 @@ if __name__ == "__main__":
         "trainable_params": trainable_params,
         "nontrainable_params": nontrainable_params
     })
+
+    sys.exit("Testing finished! Everything is properly initialized.")
 
     # Initialize run.
     run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")

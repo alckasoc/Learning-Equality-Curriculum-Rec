@@ -97,20 +97,21 @@ scheduler:
     scheduler_type: 'cosine_schedule_with_warmup' # [constant_schedule_with_warmup, linear_schedule_with_warmup, cosine_schedule_with_warmup,polynomial_decay_schedule_with_warmup]
     batch_scheduler: True
 
-    constant_schedule_with_warmup:
-        n_warmup_steps: 0
+    scheduler_cfg:
+        constant_schedule_with_warmup:
+            n_warmup_steps: 0
 
-    linear_schedule_with_warmup:
-        n_warmup_steps: 0
+        linear_schedule_with_warmup:
+            n_warmup_steps: 0
 
-    cosine_schedule_with_warmup:
-        n_cycles: 0.5
-        n_warmup_steps: 0
+        cosine_schedule_with_warmup:
+            n_cycles: 0.5
+            n_warmup_steps: 0
 
-    polynomial_decay_schedule_with_warmup:
-        n_warmup_steps: 0
-        power: 1.0
-        min_lr: 0.0
+        polynomial_decay_schedule_with_warmup:
+            n_warmup_steps: 0
+            power: 1.0
+            min_lr: 0.0
 
 adversarial_learning:
     adversarial_lr: 0.00001
