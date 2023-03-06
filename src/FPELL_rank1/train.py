@@ -38,8 +38,8 @@ from adversarial_learning.awp import AWP
 from train_utils import train_fn, valid_fn
 from scheduler.scheduler import get_scheduler
 
-import wandb
-wandb.login()
+# import wandb
+# wandb.login()
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -198,9 +198,9 @@ if __name__ == "__main__":
         eps,
         betas,
         use_swa,
-        cfg.optimizer.swa_cfg.swa_start, 
-        cfg.optimizer.swa_cfg.swa_freq, 
-        cfg.optimizer.swa_cfg.swa_lr
+        swa_cfg.swa_start, 
+        swa_cfg.swa_freq, 
+        swa_cfg.swa_lr
     )
     
     # Scheduler.
@@ -231,9 +231,9 @@ if __name__ == "__main__":
         "trainable_params": trainable_params,
         "nontrainable_params": nontrainable_params
     })
-
+        
     # Initialize run.
-    run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
+    # run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
 
     # Training & validation loop.
     best_score, cnt = 0, 0
@@ -241,7 +241,16 @@ if __name__ == "__main__":
         start_time = time.time()
 
         # Train.
-        avg_loss = train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device, cfg.max_grad_norm, awp, unscale)  # max_grad_norm: 1000
+        avg_loss = train_fn(train_loader, 
+                            model, 
+                            criterion, 
+                            optimizer, 
+                            epoch, 
+                            scheduler, 
+                            device, 
+                            max_grad_norm, 
+                            awp, 
+                            unscale)
 
         # Validation.
         avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, device, cfg)

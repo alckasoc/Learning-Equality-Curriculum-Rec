@@ -1,6 +1,11 @@
 import torch
+from torch import nn
 from transformers import AutoConfig
 from .model import CustomModel
+
+def replace_fc_layer(model, hidden_size, output_dim=2):
+    model.fc = nn.Linear(in_features=hidden_size, out_features=output_dim, bias=True)
+    model._init_weights(model.fc)
 
 def freeze(module):
     for parameter in module.parameters():
@@ -87,4 +92,8 @@ def get_model(
             for module in model.backbone.encoder.layer[-reinitialize_n_layers:]:
                 model._init_weights(module)
 
+    # For our specific task, we reinitialize the last FC layer.
+    hidden_size = model.cfg.hidden_size
+    replace_fc_layer(model, hidden_size, output_dim=2)
+                
     return model

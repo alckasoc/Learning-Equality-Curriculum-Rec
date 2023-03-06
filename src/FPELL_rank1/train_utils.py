@@ -45,6 +45,8 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         scheduler.step()
         end = time.time()
 
+        if step == 1: break
+        
     return losses.avg
 
 # =========================================================================================
