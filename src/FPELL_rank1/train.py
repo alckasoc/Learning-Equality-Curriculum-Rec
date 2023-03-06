@@ -36,7 +36,7 @@ from models.utils import get_model
 from optimizers.optimizers import get_optimizer
 from adversarial_learning.awp import AWP
 from train_utils import train_fn, valid_fn
-from scheduler import get_scheduler
+from scheduler.scheduler import get_scheduler
 
 import wandb
 wandb.login()
@@ -56,8 +56,8 @@ seed = 42
 seed_everything(seed)
 
 if __name__ == "__main__":
-    with open() as f:
-        cfg = yaml.load()
+    with open(args.cfg) as f:
+        cfg = yaml.load(f, Loader=yaml.FullLoader)
     
     cfg = dictionary_to_namespace(cfg)
     
@@ -137,7 +137,8 @@ if __name__ == "__main__":
 
     # Instantiate tokenizer & datasets/dataloaders. 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-
+    tokenizer_length = len(tokenizer)
+    
     x_train = train[train['topic_fold'] != fold]
     x_val = train[train['topic_fold'] == fold]
     valid_labels = x_val['target'].values
@@ -173,6 +174,8 @@ if __name__ == "__main__":
 
         pooling_type,
         pooling_cfg,
+        
+        tokenizer_length,
 
         gradient_checkpointing,
         freeze_embeddings,
@@ -204,7 +207,8 @@ if __name__ == "__main__":
     train_steps_per_epoch = int(len(x_train) / train_batch_size)
     num_train_steps = train_steps_per_epoch * epochs
     scheduler = get_scheduler(optimizer, scheduler_type, 
-                              scheduler_cfg=scheduler_cfg)
+                              scheduler_cfg=scheduler_cfg,
+                              num_train_steps=num_train_steps)
     
     awp = AWP(model=model,
           optimizer=optimizer,

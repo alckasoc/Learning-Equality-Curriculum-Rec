@@ -1,6 +1,6 @@
 import torch
 from transformers import AutoConfig
-from model import CustomModel
+from .model import CustomModel
 
 def freeze(module):
     for parameter in module.parameters():
@@ -40,6 +40,8 @@ def get_model(
         
         pooling_type,
         pooling_cfg,
+    
+        tokenizer_length,
 
         gradient_checkpointing,
         freeze_embeddings,
@@ -49,16 +51,19 @@ def get_model(
         train=True
     ):
 
-    backbone_cfg = get_backbone_config(backbone_type, backbone_cfg)
+    backbone_cfg_hf = get_backbone_config(backbone_type, backbone_cfg)
 
     model = CustomModel(
         backbone_type,
 
         pretrained_backbone,
         backbone_cfg,
+        backbone_cfg_hf,
 
         pooling_type, 
-        pooling_cfg
+        pooling_cfg,
+        
+        tokenizer_length
     )
 
     if from_checkpoint is not None:

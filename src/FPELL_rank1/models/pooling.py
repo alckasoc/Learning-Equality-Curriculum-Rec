@@ -164,7 +164,7 @@ class WKPooling(nn.Module):
 
 def get_pooling_layer(pooling_type, pooling_cfg, backbone_cfg):
     if pooling_type == 'MeanPooling':
-        return MeanPooling(backbone_cfg, pooling_cfg.gru_pooling)
+        return MeanPooling()
 
     elif pooling_type == 'GRUPooling':
         return LSTMPooling(backbone_cfg, pooling_cfg.gru_pooling, is_lstm=False)

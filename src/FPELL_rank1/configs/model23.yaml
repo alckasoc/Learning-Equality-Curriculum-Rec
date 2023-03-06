@@ -15,7 +15,7 @@ training:
     epochs: 3
 
     train_batch_size: 3
-    valid_batch_size: 3
+    val_batch_size: 3
 
     max_length: 1024
 
@@ -25,7 +25,7 @@ training:
     patience: 1
 
 model:
-    tokenizer_path: './models/model23/tokenizer/'
+    tokenizer_path: '../../input/model23/tokenizer/'
 
     backbone_type: 'microsoft/deberta-v3-large'
     pretrained_backbone: True
@@ -33,7 +33,7 @@ model:
     model_checkpoint_path: '../../input/model23/microsoft-deberta-v3-large_fold0_best.pth'
 
     backbone_cfg:
-        backbone_config_path: ''
+        backbone_config_path: '../../input/model23/config.pth'
 
         backbone_hidden_dropout: 0.
         backbone_hidden_dropout_prob: 0.

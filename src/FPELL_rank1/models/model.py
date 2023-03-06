@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from transformers import AutoConfig, AutoModel
-from pooling import *
+from .pooling import *
 
 class CustomModel(nn.Module):
     def __init__(self, 
@@ -9,15 +9,18 @@ class CustomModel(nn.Module):
 
             pretrained_backbone,
             backbone_cfg,
+            backbone_cfg_hf,
 
             pooling_type, 
             pooling_cfg,
+                 
+            tokenizer_length
         ):
 
         super().__init__()
         self.pooling_type = pooling_type
         
-        if backbone_cfg.backbone_config_path is None:
+        if not backbone_cfg.backbone_config_path:
             self.cfg = AutoConfig.from_pretrained(backbone_type, output_hidden_states=True)
             self.cfg.hidden_dropout = backbone_cfg.backbone_hidden_dropout
             self.cfg.hidden_dropout_prob = backbone_cfg.backbone_hidden_dropout_prob
@@ -27,7 +30,8 @@ class CustomModel(nn.Module):
             self.cfg = torch.load(backbone_cfg.backbone_config_path)
             
         if pretrained_backbone:
-            self.backbone = AutoModel.from_pretrained(backbone_type, config=self.cfg)
+            self.backbone = AutoModel.from_pretrained(backbone_type)
+            self.backbone.resize_token_embeddings(tokenizer_length)
         else:
             self.backbone = AutoModel.from_config(self.cfg)
 

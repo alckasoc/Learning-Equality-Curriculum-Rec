@@ -117,7 +117,7 @@ def get_grouped_llrd_parameters(model,
 
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
 
-    n_layers = model.backbone_config.num_hidden_layers
+    n_layers = model.cfg.num_hidden_layers
     parameters_groups = get_parameters_groups(n_layers, n_groups)
 
     for _, (name, params) in enumerate(named_parameters):
