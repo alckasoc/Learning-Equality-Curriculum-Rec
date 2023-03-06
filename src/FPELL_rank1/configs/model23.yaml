@@ -5,7 +5,7 @@ utils:
     train: "../../input/prep_cleaned_train_context_5fold.csv"
     project: "FPELL_rank1_LECR"
     project_run_root: "test0"
-    save_root: "test0"
+    save_root: "../../models/test0"
     
     num_folds: 5
 

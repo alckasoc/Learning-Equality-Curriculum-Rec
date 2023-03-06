@@ -232,8 +232,6 @@ if __name__ == "__main__":
         "nontrainable_params": nontrainable_params
     })
 
-    sys.exit("Testing finished! Everything is properly initialized.")
-
     # Initialize run.
     run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
 
