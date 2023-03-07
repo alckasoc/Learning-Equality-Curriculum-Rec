@@ -71,6 +71,8 @@ model:
 
     gradient_checkpointing: True
 
+    freeze_backbone: True
+    unfreeze_after_n_steps: 5000
     freeze_embeddings: False
     freeze_n_layers: 0
     reinitialize_n_layers: 0

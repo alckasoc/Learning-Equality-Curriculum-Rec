@@ -102,6 +102,8 @@ if __name__ == "__main__":
     pooling_cfg = cfg.model.pooling_cfg
 
     gradient_checkpointing = cfg.model.gradient_checkpointing
+    freeze_backbone = cfg.model.freeze_backbone
+    unfreeze_after_n_steps = cfg.model.unfreeze_after_n_steps
     freeze_embeddings = cfg.model.freeze_embeddings
     freeze_n_layers = cfg.model.freeze_n_layers
     reinitialize_n_layers = cfg.model.reinitialize_n_layers
@@ -180,6 +182,7 @@ if __name__ == "__main__":
         tokenizer_length,
 
         gradient_checkpointing,
+        freeze_backbone,
         freeze_embeddings,
         freeze_n_layers,
         reinitialize_n_layers,
@@ -241,29 +244,34 @@ if __name__ == "__main__":
     run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
 
     # Training & validation loop.
+    is_frozen = True if freeze_backbone else False
     best_score, cnt = 0, 0
     for epoch in range(epochs):
         start_time = time.time()
 
         # Train.
-        best_score, avg_loss = train_fn(train_loader, 
-                                        model, 
-                                        criterion, 
-                                        optimizer, 
-                                        epoch, 
-                                        scheduler, 
-                                        device, 
-                                        max_grad_norm, 
-                                        awp, 
-                                        unscale,
+        best_score, avg_loss, is_frozen = train_fn(
+            train_loader, 
+            model, 
+            criterion, 
+            optimizer, 
+            epoch, 
+            scheduler, 
+            device, 
+            max_grad_norm, 
+            awp, 
+            unscale,
+            is_frozen, 
+            unfreeze_after_n_steps,
 
-                                        valid_loader, 
-                                        eval_steps,
-                                        correlations,
-                                        x_val,
-                                        best_score,
-                                        save_p_root,
-                                        run)
+            valid_loader, 
+            eval_steps,
+            correlations,
+            x_val,
+            best_score,
+            save_p_root,
+            run
+        )
         
         # Validation.
         avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, device)

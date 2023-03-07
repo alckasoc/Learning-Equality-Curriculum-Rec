@@ -6,14 +6,14 @@ from tqdm.auto import tqdm
 
 from utils import AverageMeter
 from datasets.datasets import collate 
-from utils import get_vram
-from utils import get_max_length, get_best_threshold, get_evaluation_steps
-
+from utils import get_vram, get_best_threshold
+from models.utils import unfreeze
 
 # =========================================================================================
 # Train function loop
 # =========================================================================================
-def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device, max_grad_norm, awp, unscale,
+def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device, max_grad_norm, awp, unscale, 
+             is_frozen, unfreeze_after_n_steps,
              valid_loader, eval_steps, correlations, x_val, best_score, save_p_root, run):
     _ = model.train()
     
@@ -47,7 +47,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         awp.restore()
         
         ###################### FREQUENT VALIDATION ######################
-        if 1 or (step + 1) in eval_steps:
+        if (step + 1) in eval_steps:
             avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, epoch)
             score, threshold = get_best_threshold(x_val, predictions, correlations)
 
@@ -81,8 +81,13 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
 
         scheduler.step()
         end = time.time()
+        
+        # Unfreezing a frozen model backbone.
+        if is_frozen and (step + 1) == unfreeze_after_n_steps:
+            unfreeze(model)
+            is_frozen = False
                 
-    return best_score, losses.avg
+    return best_score, losses.avg, is_frozen
 
 # =========================================================================================
 # Valid function loop

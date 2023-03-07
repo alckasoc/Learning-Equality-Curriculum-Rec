@@ -11,6 +11,10 @@ def freeze(module):
     for parameter in module.parameters():
         parameter.requires_grad = False
 
+def unfreeze(module):
+    for parameter in module.parameters():
+        parameter.requires_grad = True
+        
 def update_old_state(state):
     new_state = {}
     for key, value in state['model'].items():
@@ -49,10 +53,11 @@ def get_model(
         tokenizer_length,
 
         gradient_checkpointing,
+        freeze_backbone,
         freeze_embeddings,
         freeze_n_layers,
         reinitialize_n_layers,
-
+    
         train=True
     ):
 
@@ -84,13 +89,16 @@ def get_model(
             print(f'{backbone_type} does not support gradient checkpointing')
 
     if train:
-        if freeze_embeddings:
-            freeze(model.backbone.embeddings)
-        if freeze_n_layers > 0:
-            freeze(model.backbone.encoder.layer[:freeze_n_layers])
-        if reinitialize_n_layers > 0:
-            for module in model.backbone.encoder.layer[-reinitialize_n_layers:]:
-                model._init_weights(module)
+        if freeze_backbone:
+            freeze(model)
+        else:
+            if freeze_embeddings:
+                freeze(model.backbone.embeddings)
+            if freeze_n_layers > 0:
+                freeze(model.backbone.encoder.layer[:freeze_n_layers])
+            if reinitialize_n_layers > 0:
+                for module in model.backbone.encoder.layer[-reinitialize_n_layers:]:
+                    model._init_weights(module)            
 
     # For our specific task, we reinitialize the last FC layer.
     hidden_size = model.cfg.hidden_size
