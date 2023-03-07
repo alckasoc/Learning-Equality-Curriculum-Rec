@@ -14,8 +14,8 @@ utils:
 training:
     epochs: 3
 
-    train_batch_size: 3
-    val_batch_size: 3
+    train_batch_size: 24
+    val_batch_size: 24
 
     max_length: 1024
 
@@ -23,13 +23,15 @@ training:
     max_grad_norm: 1000
     unscale: False
     patience: 1
+    
+    evaluate_n_times_per_epoch: 2
 
 model:
     tokenizer_path: '../../input/model23/tokenizer/'
 
     backbone_type: 'microsoft/deberta-v3-large'
     pretrained_backbone: True
-    from_checkpoint: False
+    from_checkpoint: True
     model_checkpoint_path: '../../input/model23/microsoft-deberta-v3-large_fold0_best.pth'
 
     backbone_cfg:

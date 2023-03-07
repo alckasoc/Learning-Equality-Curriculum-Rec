@@ -12,6 +12,11 @@ import pandas as pd
 
 # <======================= TRAIN UTILS =======================> #
 
+def get_evaluation_steps(num_train_steps, n_evaluations):
+    eval_steps = num_train_steps // n_evaluations
+    eval_steps = [eval_steps * i for i in range(1, n_evaluations + 1)]
+    return eval_steps
+
 def get_max_length(train, tokenizer):
     lengths = []
     for text in tqdm(train['text'].fillna("").values, total = len(train)):

@@ -71,7 +71,7 @@ def get_model(
         tokenizer_length
     )
 
-    if from_checkpoint is not None:
+    if from_checkpoint:
         state = torch.load(model_checkpoint_path, map_location='cpu')
         if 'model.embeddings.position_ids' in state['model'].keys():
             state = update_old_state(state)
@@ -94,6 +94,6 @@ def get_model(
 
     # For our specific task, we reinitialize the last FC layer.
     hidden_size = model.cfg.hidden_size
-    replace_fc_layer(model, hidden_size, output_dim=2)
+    replace_fc_layer(model, hidden_size, output_dim=1)
                 
     return model

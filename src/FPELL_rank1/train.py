@@ -29,7 +29,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Custom imports.
 from utils import dictionary_to_namespace, f2_score, seed_everything, get_vram, get_param_counts
 from utils import AverageMeter, timeSince
-from utils import get_max_length, get_best_threshold
+from utils import get_max_length, get_best_threshold, get_evaluation_steps
 
 from datasets.datasets import custom_dataset, collate
 from models.utils import get_model
@@ -38,8 +38,8 @@ from adversarial_learning.awp import AWP
 from train_utils import train_fn, valid_fn
 from scheduler.scheduler import get_scheduler
 
-# import wandb
-# wandb.login()
+import wandb
+wandb.login()
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -82,10 +82,12 @@ if __name__ == "__main__":
 
     max_length = cfg.training.max_length
 
-    gradient_accumulation_steps: cfg.training.gradient_accumulation_steps
-    max_grad_norm: cfg.training.max_grad_norm
-    unscale: cfg.training.unscale
-    patience: cfg.training.patience
+    gradient_accumulation_steps = cfg.training.gradient_accumulation_steps
+    max_grad_norm = cfg.training.max_grad_norm
+    unscale = cfg.training.unscale
+    patience = cfg.training.patience
+    
+    evaluate_n_times_per_epoch = cfg.training.evaluate_n_times_per_epoch
 
     # Model.
     tokenizer_path = cfg.model.tokenizer_path
@@ -182,7 +184,7 @@ if __name__ == "__main__":
         freeze_n_layers,
         reinitialize_n_layers,
 
-        train=True
+        train=True,
     )
     _ = model.to(device)
 
@@ -232,8 +234,11 @@ if __name__ == "__main__":
         "nontrainable_params": nontrainable_params
     })
         
+    eval_steps = get_evaluation_steps(train_steps_per_epoch,
+                                      evaluate_n_times_per_epoch)
+        
     # Initialize run.
-    # run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
+    run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
 
     # Training & validation loop.
     best_score, cnt = 0, 0
@@ -241,34 +246,44 @@ if __name__ == "__main__":
         start_time = time.time()
 
         # Train.
-        avg_loss = train_fn(train_loader, 
-                            model, 
-                            criterion, 
-                            optimizer, 
-                            epoch, 
-                            scheduler, 
-                            device, 
-                            max_grad_norm, 
-                            awp, 
-                            unscale)
+        best_score, avg_loss = train_fn(train_loader, 
+                                        model, 
+                                        criterion, 
+                                        optimizer, 
+                                        epoch, 
+                                        scheduler, 
+                                        device, 
+                                        max_grad_norm, 
+                                        awp, 
+                                        unscale,
 
+                                        valid_loader, 
+                                        eval_steps,
+                                        correlations,
+                                        x_val,
+                                        best_score,
+                                        save_p_root,
+                                        run)
+        
         # Validation.
-        avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, device, cfg)
-
+        avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, device)
+        
         # Compute f2_score.
         score, threshold = get_best_threshold(x_val, predictions, correlations)
-
+        
         # Logging.
         elapsed = time.time() - start_time
         print(f'Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}  avg_val_loss: {avg_val_loss:.4f}  time: {elapsed:.0f}s')
         print(f'Epoch {epoch+1} - Score: {score:.4f} - Threshold: {threshold:.5f}')
 
+        # sys.exit("Test finished! Everything works. Validation done.")
+        
         run.log({
             "epoch": epoch,
-            "avg_train_loss": avg_loss,
-            "avg_val_loss": avg_val_loss,
-            "f2_score": score,
-            "threshold": threshold
+            "epoch_avg_train_loss": avg_loss,
+            "epoch_avg_val_loss": avg_val_loss,
+            "epoch_f2_score": score,
+            "epoch_threshold": threshold
         })
 
         # Saving & early stopping.
