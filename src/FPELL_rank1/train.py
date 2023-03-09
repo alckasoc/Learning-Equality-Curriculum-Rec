@@ -37,6 +37,7 @@ from optimizers.optimizers import get_optimizer
 from adversarial_learning.awp import AWP
 from train_utils import train_fn, valid_fn
 from scheduler.scheduler import get_scheduler
+from losses.losses import BCEWithLogitsMNR
 
 import wandb
 wandb.login()
@@ -88,6 +89,8 @@ if __name__ == "__main__":
     patience = cfg.training.patience
     
     evaluate_n_times_per_epoch = cfg.training.evaluate_n_times_per_epoch
+    
+    with_pseudo_labels = cfg.training.with_pseudo_labels
 
     # Model.
     tokenizer_path = cfg.model.tokenizer_path
@@ -146,9 +149,26 @@ if __name__ == "__main__":
     x_train = train[train['topic_fold'] != fold]
     x_val = train[train['topic_fold'] == fold]
     valid_labels = x_val['target'].values
-
-    train_dataset = custom_dataset(x_train, tokenizer, max_length)
-    valid_dataset = custom_dataset(x_val, tokenizer, max_length)
+        
+    # For Pseudo labeling.
+    if with_pseudo_labels:
+        m1_features = torch.load("../../input/pseudo_label/out_features_m1.pt")
+        m2_features = torch.load("../../input/pseudo_label/out_features_m2.pt")
+        
+        m1_y = torch.load("../../input/pseudo_label/preds_m1.pt")
+        m2_y = torch.load("../../input/pseudo_label/preds_m2.pt")
+    else: 
+        m1_features=m2_features=m1_y=m2_y=None
+        
+    pseudo_labels = {
+        "m1_features": m1_features,
+        "m2_features": m2_features,
+        "m1_y": m1_y,
+        "m2_y": m2_y
+    }
+    
+    train_dataset = custom_dataset(x_train, tokenizer, max_length, pseudo_labels)
+    valid_dataset = custom_dataset(x_val, tokenizer, max_length, pseudo_labels)
 
     train_loader = DataLoader(
         train_dataset, 
@@ -222,8 +242,11 @@ if __name__ == "__main__":
           adv_epoch=adversarial_epoch_start)
 
     # Criterion.
-    criterion = nn.BCEWithLogitsLoss(reduction="mean")
-
+    if not with_pseudo_labels:
+        criterion = nn.BCEWithLogitsLoss(reduction="mean")
+    else:
+        criterion = BCEWithLogitsMNR()
+    
     # Project configuration.
     print("Printing GPU stats...")
     get_vram()

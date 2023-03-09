@@ -25,6 +25,8 @@ training:
     patience: 1
     
     evaluate_n_times_per_epoch: 2
+    
+    with_pseudo_labels: False
 
 model:
     tokenizer_path: '../../input/model23/tokenizer/'

@@ -10,11 +10,12 @@ class BCEWithLogitsMNR(torch.nn.Module):
         self.bce_loss = nn.BCEWithLogitsLoss(reduction="mean")
 
         
-    def forward(self, z, y):
+    def forward(self, z, y, z_embedding, y_embedding):
         z = z.view(-1)
         bce_loss = self.bce_loss(z, y)
+        mnr_loss = self.mnr_loss(z_embedding, y_embedding)
         
-        return 
+        return 0.5 * bce_loss + 0.5 * mnr_loss
 
 # Basically the same as this: https://github.com/UKPLab/sentence-transformers/blob/master/sentence_transformers/losses/MultipleNegativesRankingLoss.py
 class MultipleNegativesRankingLoss(torch.nn.Module):

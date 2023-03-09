@@ -74,4 +74,4 @@ class CustomModel(nn.Module):
     def forward(self, inputs):
         feature = self.feature(inputs)
         output = self.fc(feature)
-        return output
+        return output, feature
