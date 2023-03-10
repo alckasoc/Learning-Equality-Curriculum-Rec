@@ -80,6 +80,10 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
             run.log({f'threshold': threshold})
             
             print("Frequent validation finished.")
+            
+            del predictions, targets, unique_parameters, learning_rates
+            torch.cuda.empty_cache()
+            gc.collect()
         ###################### FREQUENT VALIDATION ######################
         
         if unscale:
@@ -99,7 +103,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
             unfreeze(model)
             is_frozen = False
           
-        del inputs, target, y_preds, predictions, unique_parameters, learning_rates
+        del inputs, target, y_preds
         torch.cuda.empty_cache()
         gc.collect()
         
@@ -136,7 +140,7 @@ def valid_fn(valid_loader, model, criterion, device):
         targets.append(target.squeeze().to("cpu").numpy().reshape(-1))
         end = time.time()
         
-        del inputs, target, y_preds
+        del inputs
         torch.cuda.empty_cache()
         gc.collect()
         
