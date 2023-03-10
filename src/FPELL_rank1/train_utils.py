@@ -4,6 +4,9 @@ import torch
 import numpy as np
 from tqdm.auto import tqdm
 
+import torchmetrics
+from torchmetrics.classification import BinaryRecall
+
 from utils import AverageMeter
 from datasets.datasets import collate 
 from utils import get_vram, get_best_threshold
@@ -15,6 +18,8 @@ from models.utils import unfreeze
 def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device, max_grad_norm, awp, unscale, 
              is_frozen, unfreeze_after_n_steps,
              valid_loader, eval_steps, correlations, x_val, best_score, save_p_root, run):
+    binary_recall = BinaryRecall()
+    
     _ = model.train()
     
     scaler = torch.cuda.amp.GradScaler(enabled = True)
@@ -32,7 +37,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         awp.perturb(epoch)
         
         with torch.cuda.amp.autocast(enabled = True):
-            y_preds = model(inputs)
+            y_preds, _ = model(inputs)
             loss = criterion(y_preds.view(-1), target)
             
         losses.update(loss.item(), batch_size)
@@ -48,12 +53,15 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         
         ###################### FREQUENT VALIDATION ######################
         if (step + 1) in eval_steps:
-            avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, epoch)
+            avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, epoch)
             score, threshold = get_best_threshold(x_val, predictions, correlations)
-
+            
+            # Compute recall.
+            recall = binary_recall(torch.Tensor(predictions), torch.Tensor(targets))
+            
             _ = model.train()
 
-            if score < best_score:
+            if score > best_score:
                 best_score = score
 
                 print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
@@ -63,11 +71,14 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
             unique_parameters = ['.'.join(name.split('.')[:4]) for name, _ in model.named_parameters()]
             learning_rates = list(set(zip(unique_parameters, scheduler.get_lr())))
 
+            run.log({f"recall": recall.item()})
             run.log({f'lr_val__{parameter}': lr for parameter, lr in learning_rates})
             run.log({f'val_f2_score': score})
             run.log({f'val_best_f2_score': best_score})
             run.log({f'avg_val_loss_eval_n_times_per_epoch': avg_val_loss})
             run.log({f'threshold': threshold})
+            
+            print("Frequent validation finished.")
         ###################### FREQUENT VALIDATION ######################
         
         if unscale:
@@ -86,7 +97,9 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         if is_frozen and (step + 1) == unfreeze_after_n_steps:
             unfreeze(model)
             is_frozen = False
-                
+        
+    print("Training finished.")
+        
     return best_score, losses.avg, is_frozen
 
 # =========================================================================================
@@ -95,7 +108,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
 def valid_fn(valid_loader, model, criterion, device):
     _ = model.eval()
     
-    preds = []
+    preds, targets = [], []
     losses = AverageMeter()
     start = end = time.time()
     
@@ -109,14 +122,17 @@ def valid_fn(valid_loader, model, criterion, device):
         batch_size = target.size(0)
         
         with torch.no_grad():
-            y_preds = model(inputs)
+            y_preds, _ = model(inputs)
             
         loss = criterion(y_preds.view(-1), target)
         losses.update(loss.item(), batch_size)
         
         preds.append(y_preds.sigmoid().squeeze().to('cpu').numpy().reshape(-1))
+        targets.append(target.squeeze().to("cpu").numpy().reshape(-1))
         end = time.time()
-
+    print("Validation finished.")
+        
     predictions = np.concatenate(preds, axis=0)
+    targets = np.concatenate(targets, axis=0)
     
-    return losses.avg, predictions
+    return losses.avg, predictions, targets

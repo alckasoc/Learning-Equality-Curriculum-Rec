@@ -22,6 +22,9 @@ import transformers
 from transformers import AutoTokenizer
 from transformers import get_cosine_schedule_with_warmup, DataCollatorWithPadding
 
+import torchmetrics
+from torchmetrics.classification import BinaryRecall
+
 os.environ["TOKENIZERS_PARALLELISM"]="true"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -44,7 +47,7 @@ wandb.login()
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--cfg", default="./config/model23.yaml", type=str)
+parser.add_argument("--cfg", default="./configs/model23.yaml", type=str)
 parser.add_argument("--fold", default=0, type=int)
 parser.add_argument("--debug", default=0, type=int)
 args = parser.parse_args()
@@ -246,7 +249,9 @@ if __name__ == "__main__":
         criterion = nn.BCEWithLogitsLoss(reduction="mean")
     else:
         criterion = BCEWithLogitsMNR()
-    
+        
+    binary_recall = BinaryRecall()
+
     # Project configuration.
     print("Printing GPU stats...")
     get_vram()
@@ -297,10 +302,11 @@ if __name__ == "__main__":
         )
         
         # Validation.
-        avg_val_loss, predictions = valid_fn(valid_loader, model, criterion, device)
+        avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, device)
         
-        # Compute f2_score.
+        # Compute f2_score and recall.
         score, threshold = get_best_threshold(x_val, predictions, correlations)
+        recall = binary_recall(torch.Tensor(predictions), torch.Tensor(targets))
         
         # Logging.
         elapsed = time.time() - start_time
@@ -314,6 +320,7 @@ if __name__ == "__main__":
             "epoch_avg_train_loss": avg_loss,
             "epoch_avg_val_loss": avg_val_loss,
             "epoch_f2_score": score,
+            "epoch_recall": recall.item(),
             "epoch_threshold": threshold
         })
 
