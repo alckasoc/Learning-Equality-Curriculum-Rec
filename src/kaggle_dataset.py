@@ -12,7 +12,7 @@ os.environ["KAGGLE_KEY"] = "d8cb10c6ebfb6529afda64a2a04745f7"
 import kaggle
 
 # Custom imports.
-from utils import clean_model_folder
+# from utils import clean_model_folder
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     assert len(args.title) >= 6 and len(args.title) <= 50
     for i, f in enumerate(folders): assert f in [f"fold{i}" for i in range(n_folds)]
     
-    for f in folders: clean_model_folder(os.path.join(args.save_p, f), by="epoch")
+    # for f in folders: clean_model_folder(os.path.join(args.save_p, f), by="epoch")
 
     title_id = args.title.lower().replace("_", "-")
     data = {

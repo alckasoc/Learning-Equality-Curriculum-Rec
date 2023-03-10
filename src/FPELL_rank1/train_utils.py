@@ -1,4 +1,5 @@
 import os
+import gc
 import time
 import torch
 import numpy as np
@@ -97,6 +98,10 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         if is_frozen and (step + 1) == unfreeze_after_n_steps:
             unfreeze(model)
             is_frozen = False
+          
+        del inputs, target, y_preds, predictions, unique_parameters, learning_rates
+        torch.cuda.empty_cache()
+        gc.collect()
         
     print("Training finished.")
         
@@ -130,6 +135,11 @@ def valid_fn(valid_loader, model, criterion, device):
         preds.append(y_preds.sigmoid().squeeze().to('cpu').numpy().reshape(-1))
         targets.append(target.squeeze().to("cpu").numpy().reshape(-1))
         end = time.time()
+        
+        del inputs, target, y_preds
+        torch.cuda.empty_cache()
+        gc.collect()
+        
     print("Validation finished.")
         
     predictions = np.concatenate(preds, axis=0)
