@@ -24,7 +24,7 @@ training:
     unscale: False
     patience: 1
     
-    evaluate_n_times_per_epoch: 12
+    evaluate_n_times_per_epoch: 4
     
     with_pseudo_labels: False
 
@@ -33,8 +33,12 @@ model:
 
     backbone_type: 'microsoft/deberta-v3-large'
     pretrained_backbone: True
-    from_checkpoint: True
+    from_past_checkpoint: True
     model_checkpoint_path: '../../input/model23/microsoft-deberta-v3-large_fold0_best.pth'
+    from_checkpoint: True
+    checkpoint_path: '../../models/deberta-v3-large/deberta-v3-large/fold4/ep0.pth'
+    opt_checkpoint_path: '../../models/deberta-v3-large/deberta-v3-large/fold4/optimizer_ep0.pth'
+    sched_checkpoint_path: '../../models/deberta-v3-large/deberta-v3-large/fold4/scheduler_ep0.pth'
 
     backbone_cfg:
         backbone_config_path: '../../input/model23/config.pth'
@@ -73,7 +77,7 @@ model:
 
     gradient_checkpointing: True
 
-    freeze_backbone: True
+    freeze_backbone: False
     unfreeze_after_n_steps: 5000
     freeze_embeddings: False
     freeze_n_layers: 0

@@ -43,8 +43,10 @@ def get_model(
         backbone_type, 
 
         pretrained_backbone,
-        from_checkpoint,
+        from_past_checkpoint,
         model_checkpoint_path,
+        from_checkpoint,
+        checkpoint_path,
         backbone_cfg, 
         
         pooling_type,
@@ -76,7 +78,7 @@ def get_model(
         tokenizer_length
     )
 
-    if from_checkpoint:
+    if from_past_checkpoint:
         state = torch.load(model_checkpoint_path, map_location='cpu')
         if 'model.embeddings.position_ids' in state['model'].keys():
             state = update_old_state(state)
@@ -103,5 +105,9 @@ def get_model(
     # For our specific task, we reinitialize the last FC layer.
     hidden_size = model.cfg.hidden_size
     replace_fc_layer(model, hidden_size, output_dim=1)
+    
+    if from_checkpoint:
+        model.load_state_dict(torch.load(checkpoint_path, map_location='cpu'))
+        print("Loaded from a previous checkpoint.")
                 
     return model

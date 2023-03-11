@@ -100,8 +100,12 @@ if __name__ == "__main__":
 
     backbone_type = cfg.model.backbone_type
     pretrained_backbone = cfg.model.pretrained_backbone
-    from_checkpoint = cfg.model.from_checkpoint
+    from_past_checkpoint = cfg.model.from_past_checkpoint
     model_checkpoint_path = cfg.model.model_checkpoint_path
+    from_checkpoint = cfg.model.from_checkpoint
+    checkpoint_path = cfg.model.checkpoint_path
+    opt_checkpoint_path = cfg.model.opt_checkpoint_path
+    sched_checkpoint_path = cfg.model.sched_checkpoint_path
     backbone_cfg = cfg.model.backbone_cfg
 
     pooling_type = cfg.model.pooling_type
@@ -195,8 +199,10 @@ if __name__ == "__main__":
         backbone_type, 
 
         pretrained_backbone,
-        from_checkpoint,
+        from_past_checkpoint,
         model_checkpoint_path,
+        from_checkpoint,
+        checkpoint_path,
         backbone_cfg, 
 
         pooling_type,
@@ -212,31 +218,40 @@ if __name__ == "__main__":
 
         train=True,
     )
+    
+    # sys.exit("Test finished! Everything works. Loading model is done.")
+    
     _ = model.to(device)
 
     # Optimizer.
-    optimizer = get_optimizer(
-        model,
-        encoder_lr,
-        decoder_lr,
-        embeddings_lr,
-        group_lt_multiplier,
-        weight_decay,
-        n_groups,
-        eps,
-        betas,
-        use_swa,
-        swa_cfg.swa_start, 
-        swa_cfg.swa_freq, 
-        swa_cfg.swa_lr
-    )
+    if not from_checkpoint:
+        optimizer = get_optimizer(
+            model,
+            encoder_lr,
+            decoder_lr,
+            embeddings_lr,
+            group_lt_multiplier,
+            weight_decay,
+            n_groups,
+            eps,
+            betas,
+            use_swa,
+            swa_cfg.swa_start, 
+            swa_cfg.swa_freq, 
+            swa_cfg.swa_lr
+        )
+    else:
+        optimizer = torch.load(opt_checkpoint_path)
     
     # Scheduler.
     train_steps_per_epoch = int(len(x_train) / train_batch_size)
     num_train_steps = train_steps_per_epoch * epochs
-    scheduler = get_scheduler(optimizer, scheduler_type, 
-                              scheduler_cfg=scheduler_cfg,
-                              num_train_steps=num_train_steps)
+    if not from_checkpoint:
+        scheduler = get_scheduler(optimizer, scheduler_type, 
+                                  scheduler_cfg=scheduler_cfg,
+                                  num_train_steps=num_train_steps)
+    else:
+        scheduler = torch.load(sched_checkpoint_path)
     
     awp = AWP(model=model,
           optimizer=optimizer,
@@ -244,7 +259,7 @@ if __name__ == "__main__":
           adv_eps=adversarial_eps,
           adv_epoch=adversarial_epoch_start)
 
-    # Criterion.
+    # Criterion & metric.
     if not with_pseudo_labels:
         criterion = nn.BCEWithLogitsLoss(reduction="mean")
     else:
@@ -264,10 +279,10 @@ if __name__ == "__main__":
         "trainable_params": trainable_params,
         "nontrainable_params": nontrainable_params
     })
-        
+    
     eval_steps = get_evaluation_steps(train_steps_per_epoch,
                                       evaluate_n_times_per_epoch)
-        
+    
     # Initialize run.
     run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
 
@@ -298,7 +313,8 @@ if __name__ == "__main__":
             x_val,
             best_score,
             save_p_root,
-            run
+            run,
+            backbone_type
         )
         
         # Validation.
@@ -327,18 +343,24 @@ if __name__ == "__main__":
         # Saving.
         if score > best_score:
             best_score = score
-            
+        
         print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
         save_p = os.path.join(save_p_root, f"ep{epoch}_end.pth")
+        opt_save_p = os.path.join(save_p_root, f"optimizer_ep{epoch}_end.pth")
+        sched_save_p = os.path.join(save_p_root, f"scheduler_ep{epoch}_end.pth")
         torch.save(model.state_dict(), save_p)
+        torch.save(optimizer, opt_save_p)
+        torch.save(scheduler, sched_save_p)
 
         # W&B save model as artifact.
         artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')
         artifact.add_file(save_p, name=f"ep{epoch}_end.pth")
+        artifact.add_file(opt_save_p, name=f"optimizer_ep{epoch}_end.pth")
+        artifact.add_file(sched_save_p, name=f"scheduler_ep{epoch}_end.pth")
         run.log_artifact(artifact)
 
         val_predictions = predictions
-            
+        
 #         elif patience != -1 and patience > 0:
 #             cnt += 1
 #             if cnt == patience:

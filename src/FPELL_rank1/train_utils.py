@@ -18,7 +18,7 @@ from models.utils import unfreeze
 # =========================================================================================
 def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device, max_grad_norm, awp, unscale, 
              is_frozen, unfreeze_after_n_steps,
-             valid_loader, eval_steps, correlations, x_val, best_score, save_p_root, run):
+             valid_loader, eval_steps, correlations, x_val, best_score, save_p_root, run, backbone_type):
     binary_recall = BinaryRecall()
     
     _ = model.train()
@@ -67,7 +67,18 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
 
                 print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
                 save_p = os.path.join(save_p_root, f"ep{epoch}.pth")
-                torch.save({'model': model.state_dict(), 'predictions': predictions}, save_p)
+                opt_save_p = os.path.join(save_p_root, f"optimizer_ep{epoch}.pth")
+                sched_save_p = os.path.join(save_p_root, f"scheduler_ep{epoch}.pth")
+                torch.save(model.state_dict(), save_p)
+                torch.save(optimizer, opt_save_p)
+                torch.save(scheduler, sched_save_p)
+                
+                    # W&B save model as artifact.
+                artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')
+                artifact.add_file(save_p, name=f"ep{epoch}_end.pth")
+                artifact.add_file(opt_save_p, name=f"optimizer_ep{epoch}.pth")
+                artifact.add_file(sched_save_p, name=f"scheduler_ep{epoch}.pth")
+                run.log_artifact(artifact)
 
             unique_parameters = ['.'.join(name.split('.')[:4]) for name, _ in model.named_parameters()]
             learning_rates = list(set(zip(unique_parameters, scheduler.get_lr())))
