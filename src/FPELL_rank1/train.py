@@ -217,15 +217,11 @@ if __name__ == "__main__":
         reinitialize_n_layers,
 
         train=True,
-    )
-    
-    # sys.exit("Test finished! Everything works. Loading model is done.")
-    
+    )    
     _ = model.to(device)
 
     # Optimizer.
-    if not from_checkpoint:
-        optimizer = get_optimizer(
+    optimizer = get_optimizer(
             model,
             encoder_lr,
             decoder_lr,
@@ -240,18 +236,17 @@ if __name__ == "__main__":
             swa_cfg.swa_freq, 
             swa_cfg.swa_lr
         )
-    else:
-        optimizer = torch.load(opt_checkpoint_path)
+    if from_checkpoint:
+        optimizer.load_state_dict(torch.load(opt_checkpoint_path))
     
     # Scheduler.
     train_steps_per_epoch = int(len(x_train) / train_batch_size)
     num_train_steps = train_steps_per_epoch * epochs
-    if not from_checkpoint:
-        scheduler = get_scheduler(optimizer, scheduler_type, 
-                                  scheduler_cfg=scheduler_cfg,
-                                  num_train_steps=num_train_steps)
-    else:
-        scheduler = torch.load(sched_checkpoint_path)
+    scheduler = get_scheduler(optimizer, scheduler_type, 
+                              scheduler_cfg=scheduler_cfg,
+                              num_train_steps=num_train_steps)
+    if from_checkpoint:
+        scheduler.load_state_dict(torch.load(sched_checkpoint_path))
     
     awp = AWP(model=model,
           optimizer=optimizer,
@@ -349,8 +344,8 @@ if __name__ == "__main__":
         opt_save_p = os.path.join(save_p_root, f"optimizer_ep{epoch}_end.pth")
         sched_save_p = os.path.join(save_p_root, f"scheduler_ep{epoch}_end.pth")
         torch.save(model.state_dict(), save_p)
-        torch.save(optimizer, opt_save_p)
-        torch.save(scheduler, sched_save_p)
+        torch.save(optimizer.state_dict(), opt_save_p)
+        torch.save(scheduler.state_dict(), sched_save_p)
 
         # W&B save model as artifact.
         artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')

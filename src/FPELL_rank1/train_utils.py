@@ -70,8 +70,8 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
                 opt_save_p = os.path.join(save_p_root, f"optimizer_ep{epoch}.pth")
                 sched_save_p = os.path.join(save_p_root, f"scheduler_ep{epoch}.pth")
                 torch.save(model.state_dict(), save_p)
-                torch.save(optimizer, opt_save_p)
-                torch.save(scheduler, sched_save_p)
+                torch.save(optimizer.state_dict(), opt_save_p)
+                torch.save(scheduler.state_dict(), sched_save_p)
                 
                     # W&B save model as artifact.
                 artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')
