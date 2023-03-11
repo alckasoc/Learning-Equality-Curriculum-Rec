@@ -324,33 +324,35 @@ if __name__ == "__main__":
             "epoch_threshold": threshold
         })
 
-        # Saving & early stopping.
+        # Saving.
         if score > best_score:
             best_score = score
-            print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
-            save_p = os.path.join(save_p_root, f"ep{epoch}.pth")
-            torch.save(model.state_dict(), save_p)
             
-            # W&B save model as artifact.
-            artifact = wandb.Artifact(cfg.model.replace('/', '-'), type='model')
-            artifact.add_file(save_p, name=f"ep{epoch}.pth")
-            run.log_artifact(artifact)
+        print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
+        save_p = os.path.join(save_p_root, f"ep{epoch}_end.pth")
+        torch.save(model.state_dict(), save_p)
+
+        # W&B save model as artifact.
+        artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')
+        artifact.add_file(save_p, name=f"ep{epoch}_end.pth")
+        run.log_artifact(artifact)
+
+        val_predictions = predictions
             
-            val_predictions = predictions
-        elif patience != -1 and patience > 0:
-            cnt += 1
-            if cnt == patience:
-                print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
-                save_p = os.path.join(save_p_root, f"ep{epoch}.pth")
-                torch.save(model.state_dict(), save_p)
+#         elif patience != -1 and patience > 0:
+#             cnt += 1
+#             if cnt == patience:
+#                 print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
+#                 save_p = os.path.join(save_p_root, f"ep{epoch}.pth")
+#                 torch.save(model.state_dict(), save_p)
                 
-                # W&B save model as artifact.
-                artifact = wandb.Artifact(cfg.model.replace('/', '-'), type='model')
-                artifact.add_file(save_p, name=f"ep{epoch}.pth")
-                run.log_artifact(artifact)
+#                 # W&B save model as artifact.
+#                 artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')
+#                 artifact.add_file(save_p, name=f"ep{epoch}.pth")
+#                 run.log_artifact(artifact)
                 
-                val_predictions = predictions
-                break
+#                 val_predictions = predictions
+#                 break
                 
     torch.cuda.empty_cache()
     gc.collect()
