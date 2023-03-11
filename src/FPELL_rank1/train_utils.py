@@ -13,6 +13,8 @@ from datasets.datasets import collate
 from utils import get_vram, get_best_threshold
 from models.utils import unfreeze
 
+import wandb
+
 # =========================================================================================
 # Train function loop
 # =========================================================================================

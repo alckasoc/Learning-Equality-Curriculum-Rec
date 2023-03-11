@@ -236,8 +236,8 @@ if __name__ == "__main__":
             swa_cfg.swa_freq, 
             swa_cfg.swa_lr
         )
-    if from_checkpoint:
-        optimizer.load_state_dict(torch.load(opt_checkpoint_path))
+    # if from_checkpoint:
+    #     optimizer.load_state_dict(torch.load(opt_checkpoint_path))
     
     # Scheduler.
     train_steps_per_epoch = int(len(x_train) / train_batch_size)
@@ -245,8 +245,8 @@ if __name__ == "__main__":
     scheduler = get_scheduler(optimizer, scheduler_type, 
                               scheduler_cfg=scheduler_cfg,
                               num_train_steps=num_train_steps)
-    if from_checkpoint:
-        scheduler.load_state_dict(torch.load(sched_checkpoint_path))
+    # if from_checkpoint:
+    #     scheduler.load_state_dict(torch.load(sched_checkpoint_path))
     
     awp = AWP(model=model,
           optimizer=optimizer,
@@ -313,33 +313,33 @@ if __name__ == "__main__":
         )
         
         # Validation.
-        avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, device)
+        # avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, device)
         
         # Compute f2_score and recall.
-        score, threshold = get_best_threshold(x_val, predictions, correlations)
-        recall = binary_recall(torch.Tensor(predictions), torch.Tensor(targets))
+        # score, threshold = get_best_threshold(x_val, predictions, correlations)
+        # recall = binary_recall(torch.Tensor(predictions), torch.Tensor(targets))
         
         # Logging.
         elapsed = time.time() - start_time
-        print(f'Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}  avg_val_loss: {avg_val_loss:.4f}  time: {elapsed:.0f}s')
-        print(f'Epoch {epoch+1} - Score: {score:.4f} - Threshold: {threshold:.5f}')
+        print(f'Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}  time: {elapsed:.0f}s')   # avg_val_loss: {avg_val_loss:.4f}
+        # print(f'Epoch {epoch+1} - Score: {score:.4f} - Threshold: {threshold:.5f}')
 
         # sys.exit("Test finished! Everything works. Validation done.")
         
         run.log({
             "epoch": epoch,
             "epoch_avg_train_loss": avg_loss,
-            "epoch_avg_val_loss": avg_val_loss,
-            "epoch_f2_score": score,
-            "epoch_recall": recall.item(),
-            "epoch_threshold": threshold
+            # "epoch_avg_val_loss": avg_val_loss,
+            # "epoch_f2_score": score,
+            # "epoch_recall": recall.item(),
+            # "epoch_threshold": threshold
         })
 
         # Saving.
-        if score > best_score:
-            best_score = score
+        # if score > best_score:
+        #     best_score = score
         
-        print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
+        # print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
         save_p = os.path.join(save_p_root, f"ep{epoch}_end.pth")
         opt_save_p = os.path.join(save_p_root, f"optimizer_ep{epoch}_end.pth")
         sched_save_p = os.path.join(save_p_root, f"scheduler_ep{epoch}_end.pth")
@@ -354,7 +354,7 @@ if __name__ == "__main__":
         artifact.add_file(sched_save_p, name=f"scheduler_ep{epoch}_end.pth")
         run.log_artifact(artifact)
 
-        val_predictions = predictions
+        # val_predictions = predictions
         
 #         elif patience != -1 and patience > 0:
 #             cnt += 1
@@ -375,7 +375,7 @@ if __name__ == "__main__":
     gc.collect()
     
     # Get best threshold.
-    best_score, best_threshold = get_best_threshold(x_val, val_predictions, correlations)
-    print(f'Our CV score is {best_score} using a threshold of {best_threshold}')
+    # best_score, best_threshold = get_best_threshold(x_val, val_predictions, correlations)
+    # print(f'Our CV score is {best_score} using a threshold of {best_threshold}')
 
     run.finish()

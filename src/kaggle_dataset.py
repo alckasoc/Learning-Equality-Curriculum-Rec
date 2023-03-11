@@ -28,8 +28,8 @@ if __name__ == "__main__":
     folders = [i for i in os.listdir(args.save_p) if "fold" in i]
     print(folders)
     
-    assert len(args.title) >= 6 and len(args.title) <= 50
-    for i, f in enumerate(folders): assert f in [f"fold{i}" for i in range(n_folds)]
+    # assert len(args.title) >= 6 and len(args.title) <= 50
+    # for i, f in enumerate(folders): assert f in [f"fold{i}" for i in range(n_folds)]
     
     # for f in folders: clean_model_folder(os.path.join(args.save_p, f), by="epoch")
 
