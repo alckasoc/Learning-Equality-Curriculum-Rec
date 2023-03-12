@@ -89,7 +89,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
                 
         ###################### FREQUENT VALIDATION ######################
         if (step + 1) in eval_steps:
-            avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, epoch)
+            avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, device)
             score, threshold = get_best_threshold(x_val, predictions, correlations)
             
             # Compute recall.

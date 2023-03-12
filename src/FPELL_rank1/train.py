@@ -324,8 +324,6 @@ if __name__ == "__main__":
         elapsed = time.time() - start_time
         print(f'Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}  time: {elapsed:.0f}s')   # avg_val_loss: {avg_val_loss:.4f}
         # print(f'Epoch {epoch+1} - Score: {score:.4f} - Threshold: {threshold:.5f}')
-
-        # sys.exit("Test finished! Everything works. Validation done.")
         
         run.log({
             "epoch": epoch,
