@@ -1,3 +1,4 @@
+import sys
 import os
 import gc
 import time
@@ -19,7 +20,7 @@ import wandb
 # Train function loop
 # =========================================================================================
 def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device, max_grad_norm, awp, unscale, 
-             is_frozen, unfreeze_after_n_steps,
+             is_frozen, unfreeze_after_n_steps, with_pseudo_labels,
              valid_loader, eval_steps, correlations, x_val, best_score, save_p_root, run, backbone_type):
     binary_recall = BinaryRecall()
     
@@ -30,18 +31,28 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
     start = end = time.time()
     
     print("Training...")
-    for step, (inputs, target) in tqdm(enumerate(train_loader), position=0, leave=True, total=len(train_loader)):
+    for step, data in tqdm(enumerate(train_loader), position=0, leave=True, total=len(train_loader)):
+        if with_pseudo_labels:
+            inputs, target, target_features = data
+        else:
+            inputs, target = data
         inputs = collate(inputs)
         
         for k, v in inputs.items():
             inputs[k] = v.to(device)
         target = target.to(device)
+        if with_pseudo_labels: target_features = target_features.to(device)
         batch_size = target.size(0)
         awp.perturb(epoch)
         
-        with torch.cuda.amp.autocast(enabled = True):
-            y_preds, _ = model(inputs)
-            loss = criterion(y_preds.view(-1), target)
+        if with_pseudo_labels:
+            with torch.cuda.amp.autocast(enabled=True):
+                y_preds, y_pred_features = model(inputs)
+                loss = criterion(y_preds.view(-1), target.view(-1), y_pred_features, target_features)
+        else:
+            with torch.cuda.amp.autocast(enabled=True):
+                y_preds, _ = model(inputs)
+                loss = criterion(y_preds.view(-1), target)
             
         losses.update(loss.item(), batch_size)
         scaler.scale(loss).backward()
@@ -54,6 +65,28 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         
         awp.restore()
         
+        if unscale:
+            scaler.unscale_(optimizer)
+        
+        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+        
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.zero_grad()
+
+        scheduler.step()
+        end = time.time()
+        
+        del inputs, target, y_preds
+        if with_pseudo_labels: del target_features
+        torch.cuda.empty_cache()
+        gc.collect()
+        
+        # Unfreezing a frozen model backbone.
+        if is_frozen and (step + 1) == unfreeze_after_n_steps:
+            unfreeze(model)
+            is_frozen = False
+                
         ###################### FREQUENT VALIDATION ######################
         if (step + 1) in eval_steps:
             avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, epoch)
@@ -75,7 +108,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
                 torch.save(optimizer.state_dict(), opt_save_p)
                 torch.save(scheduler.state_dict(), sched_save_p)
                 
-                    # W&B save model as artifact.
+                # W&B save model as artifact.
                 artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')
                 artifact.add_file(save_p, name=f"ep{epoch}_end.pth")
                 artifact.add_file(opt_save_p, name=f"optimizer_ep{epoch}.pth")
@@ -99,24 +132,6 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
             gc.collect()
         ###################### FREQUENT VALIDATION ######################
         
-        if unscale:
-            scaler.unscale_(optimizer)
-        
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
-        
-        scaler.step(optimizer)
-        scaler.update()
-        optimizer.zero_grad()
-
-        scheduler.step()
-        end = time.time()
-        
-        # Unfreezing a frozen model backbone.
-        if is_frozen and (step + 1) == unfreeze_after_n_steps:
-            unfreeze(model)
-            is_frozen = False
-          
-        del inputs, target, y_preds
         torch.cuda.empty_cache()
         gc.collect()
         

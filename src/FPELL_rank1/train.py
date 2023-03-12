@@ -174,9 +174,9 @@ if __name__ == "__main__":
         "m2_y": m2_y
     }
     
-    train_dataset = custom_dataset(x_train, tokenizer, max_length, pseudo_labels)
-    valid_dataset = custom_dataset(x_val, tokenizer, max_length, pseudo_labels)
-
+    train_dataset = custom_dataset(x_train, tokenizer, max_length, with_pseudo_labels, pseudo_labels)
+    valid_dataset = custom_dataset(x_val, tokenizer, max_length, with_pseudo_labels, pseudo_labels)
+    
     train_loader = DataLoader(
         train_dataset, 
         batch_size = train_batch_size, 
@@ -193,10 +193,10 @@ if __name__ == "__main__":
         pin_memory = True, 
         drop_last = False
     )
-
+    
     # Model.
     model = get_model(
-        backbone_type, 
+        backbone_type,
 
         pretrained_backbone,
         from_past_checkpoint,
@@ -236,8 +236,8 @@ if __name__ == "__main__":
             swa_cfg.swa_freq, 
             swa_cfg.swa_lr
         )
-    # if from_checkpoint:
-    #     optimizer.load_state_dict(torch.load(opt_checkpoint_path))
+    if from_checkpoint:
+        optimizer.load_state_dict(torch.load(opt_checkpoint_path))
     
     # Scheduler.
     train_steps_per_epoch = int(len(x_train) / train_batch_size)
@@ -245,8 +245,8 @@ if __name__ == "__main__":
     scheduler = get_scheduler(optimizer, scheduler_type, 
                               scheduler_cfg=scheduler_cfg,
                               num_train_steps=num_train_steps)
-    # if from_checkpoint:
-    #     scheduler.load_state_dict(torch.load(sched_checkpoint_path))
+    if from_checkpoint:
+        scheduler.load_state_dict(torch.load(sched_checkpoint_path))
     
     awp = AWP(model=model,
           optimizer=optimizer,
@@ -261,7 +261,7 @@ if __name__ == "__main__":
         criterion = BCEWithLogitsMNR()
         
     binary_recall = BinaryRecall()
-
+    
     # Project configuration.
     print("Printing GPU stats...")
     get_vram()
@@ -301,7 +301,8 @@ if __name__ == "__main__":
             unscale,
             is_frozen, 
             unfreeze_after_n_steps,
-
+            with_pseudo_labels,
+            
             valid_loader, 
             eval_steps,
             correlations,
