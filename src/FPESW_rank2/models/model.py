@@ -9,13 +9,15 @@ class LongformerForTokenClassificationwithbiLSTM(LongformerPreTrainedModel):
 
     def __init__(self, config):
         super().__init__(config)
+        self.config = config
         self.num_labels = config.num_labels
 
         self.longformer = LongformerModel(config, add_pooling_layer=False)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
         self.bilstm = nn.LSTM(config.hidden_size, (config.hidden_size) // 2, dropout=config.hidden_dropout_prob, batch_first=True,
                               bidirectional=True)
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -56,6 +58,7 @@ class LongformerForTokenClassificationwithbiLSTM(LongformerPreTrainedModel):
 
         sequence_output = self.dropout(sequence_output)
         lstm_output, hc = self.bilstm(sequence_output)
+
         logits = self.classifier(lstm_output)
         
         loss = None
@@ -73,4 +76,4 @@ class LongformerForTokenClassificationwithbiLSTM(LongformerPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
             global_attentions=outputs.global_attentions,
-        )
+        ).logits.squeeze(-1)
