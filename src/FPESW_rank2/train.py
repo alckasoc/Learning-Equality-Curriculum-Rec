@@ -41,8 +41,8 @@ from train_utils import train_fn, valid_fn
 from scheduler.scheduler import get_scheduler
 from losses.losses import BCEWithLogitsMNR
 
-# import wandb
-# wandb.login()
+import wandb
+wandb.login()
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -95,6 +95,8 @@ if __name__ == "__main__":
     with_pseudo_labels = cfg.training.with_pseudo_labels
 
     # Model.
+    backbone_type = cfg.model.backbone_type
+    
     tokenizer_path = cfg.model.tokenizer_path
 
     model_checkpoint_path = cfg.model.model_checkpoint_path
@@ -136,7 +138,7 @@ if __name__ == "__main__":
     x_train = train[train['topic_fold'] != fold]
     x_val = train[train['topic_fold'] == fold]
     valid_labels = x_val['target'].values
-        
+                
     # For Pseudo labeling.
     if with_pseudo_labels:
         m1_features = torch.load("../../input/pseudo_label/out_features_m1.pt")
@@ -174,10 +176,13 @@ if __name__ == "__main__":
         drop_last = False
     )
     
-    # Model.
+    # Model & new FC init.
     model = LongformerForTokenClassificationwithbiLSTM.from_pretrained(model_checkpoint_path)
+    model.classifier = nn.Linear(max_length, 1)
+    nn.init.xavier_uniform(model.classifier.weight)
+    model.classifier.bias.data.fill_(0.01)
     _ = model.to(device)
-
+    
     # Optimizer.
     optimizer = AdamW(
         model.parameters(),
@@ -222,10 +227,7 @@ if __name__ == "__main__":
                                       evaluate_n_times_per_epoch)
     
     # Initialize run.
-    # run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
-
-    sys.exit("EVERYTHING WORKS! SCHEDULER, OPTIMIZER, AND MODEL LOADED, CONFIG DICT CREATED.")
-
+    run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
     
     # Training & validation loop.
     best_score, cnt = 0, 0

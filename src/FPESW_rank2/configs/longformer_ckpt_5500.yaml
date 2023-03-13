@@ -14,10 +14,10 @@ utils:
 training:
     epochs: 5
 
-    train_batch_size: 32
-    val_batch_size: 32
+    train_batch_size: 3
+    val_batch_size: 3
 
-    max_length: 1024
+    max_length: 512
 
     gradient_accumulation_steps: 1
     max_grad_norm: 1000
@@ -29,6 +29,8 @@ training:
     with_pseudo_labels: False
 
 model:
+    backbone_type: "longformer-large-4096"
+
     tokenizer_path: "../../input/longformerwithbilstmhead/aug-longformer-large-4096-f0/checkpoint-5500"
     model_checkpoint_path: '../../input/longformerwithbilstmhead/aug-longformer-large-4096-f0/checkpoint-5500'
     

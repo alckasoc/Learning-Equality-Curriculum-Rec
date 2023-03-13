@@ -58,8 +58,8 @@ class LongformerForTokenClassificationwithbiLSTM(LongformerPreTrainedModel):
 
         sequence_output = self.dropout(sequence_output)
         lstm_output, hc = self.bilstm(sequence_output)
-
-        logits = self.classifier(lstm_output)
+        
+        logits = self.classifier(lstm_output[:, :, -1])
         
         loss = None
         if labels is not None:
@@ -76,4 +76,4 @@ class LongformerForTokenClassificationwithbiLSTM(LongformerPreTrainedModel):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
             global_attentions=outputs.global_attentions,
-        ).logits.squeeze(-1)
+        ).logits, lstm_output[:, :, -1]

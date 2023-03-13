@@ -35,7 +35,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
             inputs, target, target_features = data
         else:
             inputs, target = data
-        inputs = collate(inputs)
+        # inputs = collate(inputs)
         
         for k, v in inputs.items():
             inputs[k] = v.to(device)
@@ -45,11 +45,11 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         
         if with_pseudo_labels:
             with torch.cuda.amp.autocast(enabled=True):
-                y_preds, y_pred_features = model(inputs)
+                y_preds, y_pred_features = model(**inputs)
                 loss = criterion(y_preds.view(-1), target.view(-1), y_pred_features, target_features)
         else:
             with torch.cuda.amp.autocast(enabled=True):
-                y_preds, _ = model(inputs)
+                y_preds, _ = model(**inputs)
                 loss = criterion(y_preds.view(-1), target)
             
         losses.update(loss.item(), batch_size)
@@ -77,7 +77,7 @@ def train_fn(train_loader, model, criterion, optimizer, epoch, scheduler, device
         if with_pseudo_labels: del target_features
         torch.cuda.empty_cache()
         gc.collect()
-                
+                            
         ###################### FREQUENT VALIDATION ######################
         if (step + 1) in eval_steps:
             avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, device)
