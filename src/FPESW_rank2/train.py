@@ -15,6 +15,7 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
+from torchcontrib.optim import SWA
 from torch.utils.data import DataLoader
 from torch.utils.checkpoint import checkpoint
 import tokenizers
@@ -35,19 +36,17 @@ from utils import AverageMeter, timeSince
 from utils import get_max_length, get_best_threshold, get_evaluation_steps
 
 from datasets.datasets import custom_dataset, collate
-from models.utils import get_model
-from optimizers.optimizers import get_optimizer
-from adversarial_learning.awp import AWP
+from models.model import LongformerForTokenClassificationwithbiLSTM
 from train_utils import train_fn, valid_fn
 from scheduler.scheduler import get_scheduler
 from losses.losses import BCEWithLogitsMNR
 
-import wandb
-wandb.login()
+# import wandb
+# wandb.login()
 
 # Arguments.
 parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("--cfg", default="./configs/model23.yaml", type=str)
+parser.add_argument("--cfg", default="./configs/test.yaml", type=str)
 parser.add_argument("--fold", default=0, type=int)
 parser.add_argument("--debug", default=0, type=int)
 args = parser.parse_args()
@@ -98,34 +97,21 @@ if __name__ == "__main__":
     # Model.
     tokenizer_path = cfg.model.tokenizer_path
 
-    backbone_type = cfg.model.backbone_type
-    pretrained_backbone = cfg.model.pretrained_backbone
-    from_past_checkpoint = cfg.model.from_past_checkpoint
     model_checkpoint_path = cfg.model.model_checkpoint_path
     from_checkpoint = cfg.model.from_checkpoint
     checkpoint_path = cfg.model.checkpoint_path
     opt_checkpoint_path = cfg.model.opt_checkpoint_path
     sched_checkpoint_path = cfg.model.sched_checkpoint_path
-    backbone_cfg = cfg.model.backbone_cfg
-
-    pooling_type = cfg.model.pooling_type
-    pooling_cfg = cfg.model.pooling_cfg
 
     gradient_checkpointing = cfg.model.gradient_checkpointing
-    freeze_backbone = cfg.model.freeze_backbone
-    unfreeze_after_n_steps = cfg.model.unfreeze_after_n_steps
-    freeze_embeddings = cfg.model.freeze_embeddings
-    freeze_n_layers = cfg.model.freeze_n_layers
-    reinitialize_n_layers = cfg.model.reinitialize_n_layers
 
     # Optimizer.
     use_swa = cfg.optimizer.use_swa
     swa_cfg = cfg.optimizer.swa_cfg
-    encoder_lr = cfg.optimizer.encoder_lr
-    embeddings_lr = cfg.optimizer.embeddings_lr
-    decoder_lr = cfg.optimizer.decoder_lr
-    group_lt_multiplier = cfg.optimizer.group_lt_multiplier
-    n_groups = cfg.optimizer.n_groups
+    swa_start = swa_cfg.swa_start
+    swa_freq = swa_cfg.swa_freq
+    swa_lr = swa_cfg.swa_lr
+    lr = cfg.optimizer.lr
     eps = cfg.optimizer.eps
     betas = cfg.optimizer.betas
     weight_decay = cfg.optimizer.weight_decay
@@ -134,11 +120,6 @@ if __name__ == "__main__":
     scheduler_type = cfg.scheduler.scheduler_type
     batch_scheduler = cfg.scheduler.batch_scheduler
     scheduler_cfg = cfg.scheduler.scheduler_cfg
-
-    # AWP.
-    adversarial_lr = cfg.adversarial_learning.adversarial_lr
-    adversarial_eps = cfg.adversarial_learning.adversarial_eps
-    adversarial_epoch_start = cfg.adversarial_learning.adversarial_epoch_start
 
     fold = args.fold
     assert fold >= 0 and fold <= num_folds, "Fold is not in range."
@@ -151,7 +132,6 @@ if __name__ == "__main__":
 
     # Instantiate tokenizer & datasets/dataloaders. 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    tokenizer_length = len(tokenizer)
     
     x_train = train[train['topic_fold'] != fold]
     x_val = train[train['topic_fold'] == fold]
@@ -195,65 +175,28 @@ if __name__ == "__main__":
     )
     
     # Model.
-    model = get_model(
-        backbone_type,
-
-        pretrained_backbone,
-        from_past_checkpoint,
-        model_checkpoint_path,
-        from_checkpoint,
-        checkpoint_path,
-        backbone_cfg, 
-
-        pooling_type,
-        pooling_cfg,
-        
-        tokenizer_length,
-
-        gradient_checkpointing,
-        freeze_backbone,
-        freeze_embeddings,
-        freeze_n_layers,
-        reinitialize_n_layers,
-
-        train=True,
-    )    
+    model = LongformerForTokenClassificationwithbiLSTM.from_pretrained(model_checkpoint_path)
     _ = model.to(device)
 
     # Optimizer.
-    optimizer = get_optimizer(
-            model,
-            encoder_lr,
-            decoder_lr,
-            embeddings_lr,
-            group_lt_multiplier,
-            weight_decay,
-            n_groups,
-            eps,
-            betas,
-            use_swa,
-            swa_cfg.swa_start, 
-            swa_cfg.swa_freq, 
-            swa_cfg.swa_lr
-        )
-    # if from_checkpoint:
-    #     optimizer.load_state_dict(torch.load(opt_checkpoint_path))
-    
+    optimizer = AdamW(
+        model.parameters(),
+        lr=lr,
+        eps=eps,
+        betas=betas,
+        weight_decay=weight_decay)
+    optimizer = SWA(optimizer, 
+                    swa_start=swa_start, 
+                    swa_freq=swa_freq, 
+                    swa_lr=swa_lr)
+
     # Scheduler.
     train_steps_per_epoch = int(len(x_train) / train_batch_size)
     num_train_steps = train_steps_per_epoch * epochs
     scheduler = get_scheduler(optimizer, scheduler_type, 
                               scheduler_cfg=scheduler_cfg,
                               num_train_steps=num_train_steps)
-    # if from_checkpoint:
-    #     scheduler.load_state_dict(torch.load(sched_checkpoint_path))
     
-    awp = AWP(model=model,
-          optimizer=optimizer,
-          adv_lr=adversarial_lr,  
-          adv_eps=adversarial_eps,
-          adv_epoch=adversarial_epoch_start)
-
     # Criterion & metric.
     if not with_pseudo_labels:
         criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -279,16 +222,18 @@ if __name__ == "__main__":
                                       evaluate_n_times_per_epoch)
     
     # Initialize run.
-    run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
+    # run = wandb.init(project=project, config=cfg_params, name=f"{project_run_root}_fold{fold}", dir="/tmp")
 
+    sys.exit("EVERYTHING WORKS! SCHEDULER, OPTIMIZER, AND MODEL LOADED, CONFIG DICT CREATED.")
+
+    
     # Training & validation loop.
-    is_frozen = True if freeze_backbone else False
     best_score, cnt = 0, 0
     for epoch in range(epochs):
         start_time = time.time()
 
         # Train.
-        best_score, avg_loss, is_frozen = train_fn(
+        best_score, avg_loss = train_fn(
             train_loader, 
             model, 
             criterion, 
@@ -297,10 +242,7 @@ if __name__ == "__main__":
             scheduler, 
             device, 
             max_grad_norm, 
-            awp, 
             unscale,
-            is_frozen, 
-            unfreeze_after_n_steps,
             with_pseudo_labels,
             
             valid_loader, 
@@ -313,32 +255,15 @@ if __name__ == "__main__":
             backbone_type
         )
         
-        # Validation.
-        # avg_val_loss, predictions, targets = valid_fn(valid_loader, model, criterion, device)
-        
-        # Compute f2_score and recall.
-        # score, threshold = get_best_threshold(x_val, predictions, correlations)
-        # recall = binary_recall(torch.Tensor(predictions), torch.Tensor(targets))
-        
         # Logging.
         elapsed = time.time() - start_time
-        print(f'Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}  time: {elapsed:.0f}s')   # avg_val_loss: {avg_val_loss:.4f}
-        # print(f'Epoch {epoch+1} - Score: {score:.4f} - Threshold: {threshold:.5f}')
+        print(f'Epoch {epoch+1} - avg_train_loss: {avg_loss:.4f}  time: {elapsed:.0f}s')
         
         run.log({
             "epoch": epoch,
             "epoch_avg_train_loss": avg_loss,
-            # "epoch_avg_val_loss": avg_val_loss,
-            # "epoch_f2_score": score,
-            # "epoch_recall": recall.item(),
-            # "epoch_threshold": threshold
         })
-
-        # Saving.
-        # if score > best_score:
-        #     best_score = score
         
-        # print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
         save_p = os.path.join(save_p_root, f"ep{epoch}_end.pth")
         opt_save_p = os.path.join(save_p_root, f"optimizer_ep{epoch}_end.pth")
         sched_save_p = os.path.join(save_p_root, f"scheduler_ep{epoch}_end.pth")
@@ -352,29 +277,8 @@ if __name__ == "__main__":
         artifact.add_file(opt_save_p, name=f"optimizer_ep{epoch}_end.pth")
         artifact.add_file(sched_save_p, name=f"scheduler_ep{epoch}_end.pth")
         run.log_artifact(artifact)
-
-        # val_predictions = predictions
-        
-#         elif patience != -1 and patience > 0:
-#             cnt += 1
-#             if cnt == patience:
-#                 print(f'Epoch {epoch+1} - Save Best Score: {best_score:.4f} Model')
-#                 save_p = os.path.join(save_p_root, f"ep{epoch}.pth")
-#                 torch.save(model.state_dict(), save_p)
-                
-#                 # W&B save model as artifact.
-#                 artifact = wandb.Artifact(backbone_type.replace('/', '-'), type='model')
-#                 artifact.add_file(save_p, name=f"ep{epoch}.pth")
-#                 run.log_artifact(artifact)
-                
-#                 val_predictions = predictions
-#                 break
                 
     torch.cuda.empty_cache()
     gc.collect()
-    
-    # Get best threshold.
-    # best_score, best_threshold = get_best_threshold(x_val, val_predictions, correlations)
-    # print(f'Our CV score is {best_score} using a threshold of {best_threshold}')
 
     run.finish()

@@ -1,0 +1,80 @@
+utils:
+    debug: 0
+
+    correlations: "../../input/correlations.csv"
+    train: "../../input/archive/train_5fold.csv"
+    project: "FPESW_rank2_LECR"
+    project_run_root: "longformer-large-4096"
+    save_root: "../../models/longformer-large-4096"
+    
+    num_folds: 5
+
+    num_workers: 0
+
+training:
+    epochs: 5
+
+    train_batch_size: 32
+    val_batch_size: 32
+
+    max_length: 1024
+
+    gradient_accumulation_steps: 1
+    max_grad_norm: 1000
+    unscale: False
+    patience: 1
+    
+    evaluate_n_times_per_epoch: 4
+    
+    with_pseudo_labels: False
+
+model:
+    tokenizer_path: "../../input/longformerwithbilstmhead/aug-longformer-large-4096-f0/checkpoint-5500"
+    model_checkpoint_path: '../../input/longformerwithbilstmhead/aug-longformer-large-4096-f0/checkpoint-5500'
+    
+    from_checkpoint: False
+    checkpoint_path: ''
+    opt_checkpoint_path: ''
+    sched_checkpoint_path: ''
+
+    gradient_checkpointing: True
+
+optimizer:
+    use_swa: True
+    
+    swa_cfg:
+        swa_start: 10
+        swa_freq: 10
+        swa_lr: 0.0005
+
+    lr: 0.000002
+
+    eps: 1.e-6
+    betas: [0.9, 0.999]
+
+    weight_decay: 0.01
+
+scheduler:
+    scheduler_type: 'cosine_schedule_with_warmup' # [constant_schedule_with_warmup, linear_schedule_with_warmup, cosine_schedule_with_warmup,polynomial_decay_schedule_with_warmup]
+    batch_scheduler: True
+
+    scheduler_cfg:
+        constant_schedule_with_warmup:
+            n_warmup_steps: 0
+
+        linear_schedule_with_warmup:
+            n_warmup_steps: 0
+
+        cosine_schedule_with_warmup:
+            n_cycles: 0.5
+            n_warmup_steps: 0
+
+        polynomial_decay_schedule_with_warmup:
+            n_warmup_steps: 0
+            power: 1.0
+            min_lr: 0.0
+
+adversarial_learning:
+    adversarial_lr: 0.00001
+    adversarial_eps: 0.001
+    adversarial_epoch_start: 2

@@ -3,6 +3,7 @@ from torch import nn
 from transformers import AutoConfig, AutoModel
 from .pooling import *
 
+
 class CustomModel(nn.Module):
     def __init__(self, 
             backbone_type,
@@ -75,3 +76,4 @@ class CustomModel(nn.Module):
         feature = self.feature(inputs)
         output = self.fc(feature)
         return output, feature
+
