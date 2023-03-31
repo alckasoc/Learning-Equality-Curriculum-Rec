@@ -14,5 +14,7 @@ nltk
 iso-639
 stopwordsiso
 torchcontrib
+sentence-transformers
+datasets
 
 # conda create -n rapids-23.02 -c rapidsai -c conda-forge -c nvidia rapids=23.02 python=3.10 cudatoolkit=11.5
