@@ -5,4 +5,4 @@ input/
 .ipynb_checkpoints/
 **/__pycache__/
 .jupyter/
-
+*.bin
